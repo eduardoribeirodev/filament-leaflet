@@ -3,6 +3,7 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Widgets;
 
 use EduardoRibeiroDev\FilamentLeaflet\Enums\MarkerColor;
+use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Marker;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -36,9 +37,11 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     protected static int $defaultZoom = 4;
     protected static int $mapHeight = 504;
     protected static bool $hasAttributionControl = false;
-    protected static string $tileLayerUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
     protected static int $maxZoom = 18;
     protected static int $minZoom = 2;
+
+    /** @var TileLayer|string[] */
+    protected static array $tileLayersUrl = [TileLayer::OpenStreetMap];
 
     // Configurações do GeoJSON Density
     protected static ?string $geoJsonUrl = null;
@@ -106,11 +109,11 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     }
 
     /**
-     * Retorna a URL da camada de tiles (Tile Layer).
+     * Retorna as URLs das camadas de tiles
      */
-    public static function getTileLayerUrl(): string
+    public static function getTileLayersUrl(): array
     {
-        return static::$tileLayerUrl;
+        return static::$tileLayersUrl;
     }
 
     /**
@@ -337,6 +340,26 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     }
 
     /**
+     * Formata os tileLayers para o formato esperado pelo JS.
+     */
+    private static function prepareTileLayersUrl(): array
+    {
+        return collect(static::getTileLayersUrl())
+            ->map(function ($layer, $key) {
+                $label = match (true) {
+                    is_string($key) => $key,
+                    $layer instanceof TileLayer => $layer->getLabel(),
+                    default => 'Layer ' . $key + 1
+                };
+
+                $url = ($layer instanceof TileLayer) ? $layer->value : $layer;
+                $attribution  = ($layer instanceof TileLayer) ? $layer->getAttribution() : null;
+
+                return [$label, $url, $attribution];
+            })->toArray();
+    }
+
+    /**
      * Retorna todos os dados de configuração para o componente JS.
      */
     public final function getWidgetData(): array
@@ -349,7 +372,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             'geoJsonData'   => $this->getGeoJsonData(),
             'markers'       => $this->prepareMarkers(),
             'infoText'      => static::getGeoJsonTooltip(),
-            'tileLayerUrl'  => static::getTileLayerUrl(),
+            'tileLayersUrl'  => static::prepareTileLayersUrl(),
             'zoomConfig'    => static::getZoomOptions(),
             'mapConfig'     => static::getMapOptions(),
             'geoJsonUrl'    => $this->getGeoJsonUrl(),

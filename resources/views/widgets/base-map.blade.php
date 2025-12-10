@@ -30,10 +30,6 @@
             overflow: hidden;
         }
 
-        .leaflet-bottom.leaflet-right {
-            display: none;
-        }
-
         .info-{{ $widgetId }} {
             padding: 8px 10px;
             font: 14px/16px Arial, Helvetica, sans-serif;
@@ -98,13 +94,14 @@
                 map: null,
                 markerLayers: [],
                 markerGroups: {},
+                baseLayers: {},
                 geoJsonLayer: null,
                 info: null,
                 layerControl: null,
 
                 init() {
                     this.createMap();
-                    this.addTileLayer();
+                    this.addTileLayers();
 
                     if (this.config.geoJsonData?.length) {
                         this.setupInfoControl();
@@ -114,6 +111,8 @@
                     this.addMarkers();
                     this.setupEventHandlers();
                     this.setupLivewireListeners();
+                    this.setupLayerControl();
+
                     this.map.invalidateSize();
                     {!! $this->afterMapInit() !!}
                 },
@@ -123,12 +122,20 @@
                         .setView(this.config.defaultCoord, this.config.defaultZoom);
                 },
 
-                addTileLayer() {
-                    L.tileLayer(this.config.tileLayerUrl, {
-                        maxZoom: this.config.zoomConfig.max,
-                        minZoom: this.config.zoomConfig.min,
-                        attribution: this.config.attribution || ''
-                    }).addTo(this.map);
+                addTileLayers() {
+                    this.config.tileLayersUrl.forEach(([label, tileLayerUrl, attribution], index) => {
+                        const layer = L.tileLayer(tileLayerUrl, {
+                            maxZoom: this.config.zoomConfig.max,
+                            minZoom: this.config.zoomConfig.min,
+                            attribution: attribution || ''
+                        });
+
+                        this.baseLayers[label] = layer;
+
+                        if (index === 0) {
+                            layer.addTo(this.map);
+                        }
+                    });
                 },
 
                 setupInfoControl() {
@@ -227,7 +234,6 @@
 
                     // Add all groups/clusters to map
                     Object.values(this.markerGroups).forEach(group => group.addTo(this.map));
-                    this.setupLayerControl();
                 },
 
                 addCluster(clusterData) {
@@ -298,11 +304,18 @@
                 },
 
                 setupLayerControl() {
-                    if (Object.keys(this.markerGroups).length == 0) {
+                    const hasBaseLayers = Object.keys(this.baseLayers).length > 0;
+                    const hasOverlays = Object.keys(this.markerGroups).length > 0;
+
+                    if (!hasBaseLayers && !hasOverlays) {
                         return;
                     }
 
-                    this.layerControl = L.control.layers(null, this.markerGroups).addTo(this.map);
+                    if (this.layerControl) {
+                        this.map.removeControl(this.layerControl);
+                    }
+
+                    this.layerControl = L.control.layers(this.baseLayers, this.markerGroups).addTo(this.map);
                 },
 
                 createIcon(marker) {
@@ -361,6 +374,9 @@
                         if (this.geoJsonLayer) this.map.removeLayer(this.geoJsonLayer);
                         this.loadGeoJson();
                     }
+
+                    // [NOVO] Reconstrói o controle após atualização dos dados
+                    this.setupLayerControl();
                 },
 
                 clearAllMarkers() {
