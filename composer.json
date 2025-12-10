@@ -1,0 +1,22 @@
+{
+    "name": "eduardoribeirodev/filament-leaflet",
+    "description": "Um widget de mapa para FilamentPHP.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "filament/filament": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "EduardoRibeiroDev\\FilamentLeaflet\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "EduardoRibeiroDev\\FilamentLeaflet\\FilamentLeafletServiceProvider"
+            ]
+        }
+    }
+}
