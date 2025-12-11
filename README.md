@@ -174,11 +174,11 @@ Marker::make($lat, $lng)
 Or use the `color()` method with a string or enum:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Enums\MarkerColor;
+use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
 
 Marker::make($lat, $lng)
     ->color('red')
-    ->color(MarkerColor::Red);
+    ->color(Color::Red);
 ```
 
 ### Custom Icons
@@ -383,7 +383,7 @@ class InteractiveMap extends MapWidget
                 ->maxLength(255),
                 
             Select::make('color')
-                ->options(MarkerColor::class)
+                ->options(Color::class)
                 ->required(),
                 
             Textarea::make('description')
@@ -682,7 +682,7 @@ public function getMarkers(): array
 | `make()` | `float $lat, float $lng` | `static` | Create marker |
 | `id()` | `string $id` | `static` | Set marker ID |
 | `label()` | `string $label` | `static` | Set label text |
-| `color()` | `string\|MarkerColor $color` | `static` | Set marker color |
+| `color()` | `string\|Color $color` | `static` | Set marker color |
 | `icon()` | `string $url, array $size` | `static` | Set custom icon |
 | `group()` | `string $group` | `static` | Set marker group |
 | `draggable()` | `bool $condition` | `static` | Enable dragging |
@@ -727,7 +727,7 @@ namespace App\Filament\Widgets;
 use App\Models\Store;
 use EduardoRibeiroDev\FilamentLeaflet\Widgets\MapWidget;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Marker;
-use EduardoRibeiroDev\FilamentLeaflet\Enums\MarkerColor;
+use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
 use Filament\Notifications\Notification;
 
 class StoreLocationsMap extends MapWidget
@@ -774,7 +774,7 @@ class StoreLocationsMap extends MapWidget
     {
         return [
             TextInput::make('name')->required(),
-            Select::make('color')->options(MarkerColor::class),
+            Select::make('color')->options(Color::class),
             TextInput::make('phone'),
             Textarea::make('business_hours')->columnSpanFull(),
         ];

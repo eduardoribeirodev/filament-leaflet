@@ -4,7 +4,7 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Enums;
 
 use Filament\Support\Contracts\HasLabel;
 
-enum MarkerColor: string implements HasLabel
+enum Color: string implements HasLabel
 {
     case Blue = 'blue';
     case Red = 'red';

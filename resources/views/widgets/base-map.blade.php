@@ -40,13 +40,13 @@
             border: 1px solid #ccc;
         }
 
-        .custom-marker-popup-{{ $widgetId }} {
+        .custom-popup-{{ $widgetId }} {
             font-family: Arial, Helvetica, sans-serif;
             font-size: 14px;
             max-width: 300px;
         }
 
-        .custom-marker-popup-{{ $widgetId }} h4 {
+        .custom-popup-{{ $widgetId }} h4 {
             margin: 0 0 8px 0;
             color: #333;
             font-size: 16px;
@@ -54,23 +54,23 @@
             text-align: center;
         }
 
-        .custom-marker-popup-{{ $widgetId }} p {
+        .custom-popup-{{ $widgetId }} p {
             margin: 4px 0;
             color: #666;
             line-height: 1.4;
         }
 
-        .custom-marker-popup-{{ $widgetId }} .field-label {
+        .custom-popup-{{ $widgetId }} .field-label {
             font-weight: bold;
             color: #444;
         }
 
-        .custom-marker-popup-{{ $widgetId }} a {
+        .custom-popup-{{ $widgetId }} a {
             color: #0066cc;
             text-decoration: none;
         }
 
-        .custom-marker-popup-{{ $widgetId }} a:hover {
+        .custom-popup-{{ $widgetId }} a:hover {
             text-decoration: underline;
         }
 
@@ -92,8 +92,8 @@
                 widgetId: '{{ $widgetId }}',
                 mapId: '{{ $mapId }}',
                 map: null,
-                markerLayers: [],
-                markerGroups: {},
+                layers: [],
+                layerGroups: {},
                 baseLayers: {},
                 geoJsonLayer: null,
                 info: null,
@@ -108,7 +108,7 @@
                         this.loadGeoJson();
                     }
 
-                    this.addMarkers();
+                    this.addLayers();
                     this.setupEventHandlers();
                     this.setupLivewireListeners();
                     this.setupLayerControl();
@@ -202,7 +202,7 @@
                             }
                         }).addTo(this.map);
                     } catch (error) {
-                        console.error('Erro ao carregar GeoJSON:', error);
+                        console.error('Erro GeoJSON:', error);
                     }
                 },
 
@@ -221,103 +221,149 @@
                     };
                 },
 
-                addMarkers() {
-                    if (!this.config.markers?.length) return;
+                addLayers() {
+                    if (!this.config.layers?.length) return;
 
-                    this.config.markers.forEach(data => {
-                        if (data.type === 'cluster') {
-                            this.addCluster(data);
-                        } else {
-                            this.addSingleMarker(data);
+                    this.config.layers.forEach(layerData => {
+                        let layer = null;
+
+                        // Cria o layer baseado no tipo
+                        switch (layerData.type) {
+                            case 'marker':
+                                layer = this.createMarker(layerData);
+                                break;
+                            case 'cluster':
+                                layer = this.createCluster(layerData);
+                                break;
+                            case 'circle':
+                                layer = this.createCircle(layerData);
+                                break;
+                            case 'rectangle':
+                                layer = this.createRectangle(layerData);
+                                break;
+                            case 'polygon':
+                                layer = this.createPolygon(layerData);
+                                break;
+                            case 'polyline':
+                                layer = this.createPolyline(layerData);
+                                break;
+                            default:
+                                console.warn(`Tipo de layer desconhecido: ${layerData.type}`);
+                                return;
                         }
+
+                        if (!layer) return;
+
+                        // Adiciona popup se existir
+                        if (layerData.popup) {
+                            this.bindPopup(layer, layerData.popup);
+                        }
+
+                        // Adiciona tooltip se existir
+                        if (layerData.tooltip) {
+                            this.bindTooltip(layer, layerData.tooltip);
+                        }
+
+                        // Adiciona evento de click
+                        if (layerData.clickAction) {
+                            layer.on('click', () => @this.onLayerClick(layerData.id));
+                        }
+
+                        // Adiciona ao grupo ou direto no mapa
+                        if (layerData.group) {
+                            this.layerGroups[layerData.group] = this.layerGroups[layerData.group] || L.layerGroup();
+                            this.layerGroups[layerData.group].addLayer(layer);
+                        } else {
+                            layer.addTo(this.map);
+                        }
+
+                        // Salva referência
+                        this.layers.push({
+                            layer,
+                            data: layerData
+                        });
                     });
 
-                    // Add all groups/clusters to map
-                    Object.values(this.markerGroups).forEach(group => group.addTo(this.map));
+                    // Adiciona os grupos ao mapa
+                    Object.values(this.layerGroups).forEach(group => group.addTo(this.map));
                 },
 
-                addCluster(clusterData) {
-                    const cluster = L.markerClusterGroup(clusterData.config || {});
-
-                    if (!clusterData.markers?.length) return;
-
-                    clusterData.markers.forEach(markerData => {
-                        const marker = this.createMarkerLayer(markerData);
-                        if (!marker) return;
-
-                        cluster.addLayer(marker);
-                    });
-
-                    if (clusterData.group) {
-                        this.markerGroups[clusterData.group] = this.markerGroups[clusterData.group] || L.layerGroup();
-                        this.markerGroups[clusterData.group].addLayer(cluster);
-                    } else {
-                        cluster.addTo(this.map);
-                    }
-
-                },
-
-                addSingleMarker(data) {
-                    const marker = this.createMarkerLayer(data);
-                    if (!marker) return;
-
-                    if (data.group) {
-                        this.markerGroups[data.group] = this.markerGroups[data.group] || L.layerGroup();
-                        this.markerGroups[data.group].addLayer(marker);
-                    } else {
-                        marker.addTo(this.map);
-                    }
-                },
-
-                createMarkerLayer(data) {
-                    if (!data.lat || !data.lng) {
-                        console.warn('Marker sem coordenadas:', data);
-                        return null;
-                    }
+                /**
+                 * Cria um marcador
+                 */
+                createMarker(data) {
+                    if (!data.lat || !data.lng) return null;
 
                     const marker = L.marker([data.lat, data.lng], {
                         icon: this.createIcon(data),
-                        title: data.title || '',
+                        title: data.title || data.popup?.title || data.tooltip?.content || '',
                         draggable: data.draggable || false
-                    });
-
-                    if (data.title || data.popupContent) {
-                        marker.bindPopup(this.createPopupContent(data), data.popupOptions);
-                    }
-
-                    if (data.tooltip) {
-                        marker.bindTooltip(data.tooltip.content || data.tooltip, {
-                            permanent: data.tooltip.permanent || false,
-                            direction: data.tooltip.direction || 'auto',
-                            ...(data.tooltip.options || {})
-                        });
-                    }
-
-                    marker.on('click', () => @this.onMarkerClick(data.id));
-
-                    this.markerLayers.push({
-                        marker,
-                        data: data
                     });
 
                     return marker;
                 },
 
-                setupLayerControl() {
-                    const hasBaseLayers = Object.keys(this.baseLayers).length > 0;
-                    const hasOverlays = Object.keys(this.markerGroups).length > 0;
+                /**
+                 * Cria um cluster de marcadores
+                 */
+                createCluster(clusterData) {
+                    const cluster = L.markerClusterGroup(clusterData.config || {});
 
-                    if (!hasBaseLayers && !hasOverlays) {
-                        return;
-                    }
+                    if (!clusterData.markers?.length) return null;
 
-                    if (this.layerControl) {
-                        this.map.removeControl(this.layerControl);
-                    }
+                    clusterData.markers.forEach(markerData => {
+                        const marker = this.createMarker(markerData);
+                        if (!marker) return;
 
-                    this.layerControl = L.control.layers(this.baseLayers, this.markerGroups).addTo(this.map);
+                        if (markerData.popup) {
+                            this.bindPopup(marker, markerData.popup);
+                        }
+
+                        if (markerData.tooltip) {
+                            this.bindTooltip(marker, markerData.tooltip);
+                        }
+
+                        cluster.addLayer(marker);
+                    });
+
+                    return cluster;
                 },
 
+                /**
+                 * Cria um círculo
+                 */
+                createCircle(data) {
+                    if (!data.center || !data.radius) return null;
+                    return L.circle(data.center, data.radius, data.options || {});
+                },
+
+                /**
+                 * Cria um retângulo
+                 */
+                createRectangle(data) {
+                    if (!data.bounds) return null;
+                    return L.rectangle(data.bounds, data.options || {});
+                },
+
+                /**
+                 * Cria um polígono
+                 */
+                createPolygon(data) {
+                    if (!data.points) return null;
+                    return L.polygon(data.points, data.options || {});
+                },
+
+                /**
+                 * Cria uma polyline
+                 */
+                createPolyline(data) {
+                    if (!data.points) return null;
+                    return L.polyline(data.points, data.options || {});
+                },
+
+                /**
+                 * Cria o ícone do marcador
+                 */
                 createIcon(marker) {
                     const options = {
                         iconSize: marker.iconSize || [25, 41],
@@ -336,19 +382,57 @@
                     return L.icon(options);
                 },
 
-                createPopupContent(marker) {
-                    let html = `<div class="custom-marker-popup-${this.widgetId}">`;
+                /**
+                 * Vincula um popup a um layer
+                 */
+                bindPopup(layer, popupConfig) {
+                    let html = `<div class="custom-popup-${this.widgetId}">`;
 
-                    if (marker.title) html += `<h4>${marker.title}</h4>`;
-                    if (marker.popupContent) html += marker.popupContent;
+                    if (popupConfig.title) {
+                        html += `<h4>${popupConfig.title}</h4>`;
+                    }
 
-                    if (marker.popupData) {
-                        Object.entries(marker.popupData).forEach(([key, value]) => {
+                    if (popupConfig.content) {
+                        html += popupConfig.content;
+                    }
+                    
+                    if (popupConfig.fields && Object.keys(popupConfig.fields).length > 0) {
+                        Object.entries(popupConfig.fields).forEach(([key, value]) => {
                             html += `<p><span class="field-label">${key}:</span> ${value}</p>`;
                         });
                     }
 
-                    return html + '</div>';
+                    html += '</div>';
+
+                    layer.bindPopup(html, popupConfig.options || {});
+                },
+
+                /**
+                 * Vincula um tooltip a um layer
+                 */
+                bindTooltip(layer, tooltipConfig) {
+                    const content = tooltipConfig.content;
+                    const options = tooltipConfig.options || {};
+
+                    layer.bindTooltip(content, options);
+                },
+
+                setupLayerControl() {
+                    const hasBaseLayers = Object.keys(this.baseLayers).length > 0;
+                    const hasOverlays = Object.keys(this.layerGroups).length > 0;
+
+                    if (!hasBaseLayers && !hasOverlays) {
+                        return;
+                    }
+
+                    if (this.layerControl) {
+                        this.map.removeControl(this.layerControl);
+                    }
+
+                    this.layerControl = L.control.layers(
+                        this.baseLayers,
+                        this.layerGroups
+                    ).addTo(this.map);
                 },
 
                 setupEventHandlers() {
@@ -366,26 +450,37 @@
 
                 updateMapData(newConfig) {
                     this.config = newConfig;
-                    this.clearAllMarkers();
+                    this.clearLayers();
 
-                    if (this.config.markers.length) this.addMarkers();
+                    // Recarrega todos os layers
+                    if (this.config.layers?.length) {
+                        this.addLayers();
+                    }
 
                     if (this.config.geoJsonData?.length) {
                         if (this.geoJsonLayer) this.map.removeLayer(this.geoJsonLayer);
                         this.loadGeoJson();
                     }
 
-                    // [NOVO] Reconstrói o controle após atualização dos dados
                     this.setupLayerControl();
                 },
 
-                clearAllMarkers() {
-                    this.markerLayers.forEach(({
-                        marker
-                    }) => this.map.removeLayer(marker));
-                    this.markerLayers = [];
-                    Object.values(this.markerGroups).forEach(group => this.map.removeLayer(group));
-                    this.markerGroups = {};
+                clearLayers() {
+                    // Limpa todos os layers
+                    this.layers.forEach(({
+                        layer
+                    }) => {
+                        if (layer.removeFrom) {
+                            layer.removeFrom(this.map);
+                        } else {
+                            this.map.removeLayer(layer);
+                        }
+                    });
+                    this.layers = [];
+
+                    // Limpa grupos
+                    Object.values(this.layerGroups).forEach(group => this.map.removeLayer(group));
+                    this.layerGroups = {};
 
                     if (this.layerControl) {
                         this.map.removeControl(this.layerControl);
@@ -393,21 +488,28 @@
                     }
                 },
 
-                fitToMarkers() {
-                    if (!this.markerLayers.length) return;
-                    const group = L.featureGroup(this.markerLayers.map(({
-                        marker
-                    }) => marker));
+                fitToLayers() {
+                    const layersToFit = this.layers
+                        .map(({
+                            layer
+                        }) => layer)
+                        .filter(layer => layer.getLatLng || layer.getBounds);
+
+                    if (!layersToFit.length) return;
+
+                    const group = L.featureGroup(layersToFit);
                     this.map.fitBounds(group.getBounds().pad(0.1));
                 },
 
                 fitToGroup(name) {
-                    this.markerGroups[name]?.getBounds &&
-                        this.map.fitBounds(this.markerGroups[name].getBounds().pad(0.1));
+                    const group = this.layerGroups[name];
+                    if (group?.getBounds) {
+                        this.map.fitBounds(group.getBounds().pad(0.1));
+                    }
                 },
 
-                getMarkerById(id) {
-                    return this.markerLayers.find(({
+                getLayerById(id) {
+                    return this.layers.find(({
                         data
                     }) => data.id === id);
                 }

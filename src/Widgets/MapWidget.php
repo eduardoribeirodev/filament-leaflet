@@ -2,9 +2,9 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Widgets;
 
-use EduardoRibeiroDev\FilamentLeaflet\Enums\MarkerColor;
+use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\On;
 use Exception;
 use Error;
+use Livewire\Attributes\Computed;
 
 abstract class MapWidget extends Widget implements HasSchemas, HasActions
 {
@@ -145,10 +146,46 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
 
     /**
      * Retorna a coleção de Markers a serem exibidos.
+     * @return Marker[]
      */
     public function getMarkers(): array
     {
         return [];
+    }
+
+    /**
+     * Retorna a coleção de Shapes a serem exibidos.
+     * @return Layer[]
+     */
+    public function getShapes(): array
+    {
+        return [];
+    }
+
+    /**
+     * Retorna a coleção de Layers a serem exibidos.
+     * @return Layer[]
+     */
+    private function getLayers(): array
+    {
+        $indexes = [];
+        $layers = array_merge(
+            $this->getMarkers(),
+            $this->getShapes()
+        );
+
+        return array_map(
+            function (Layer $layer) use (&$indexes) {
+                if (!$layer->getId()) {
+                    $indexes[$layer->getType()] = ($indexes[$layer->getType()] ?? 0) + 1;
+                    $id = $layer->getType() . '-' . $indexes[$layer->getType()];
+                    $layer->id($id);
+                }
+
+                return $layer;
+            },
+            $layers
+        );
     }
 
     /**
@@ -193,24 +230,33 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     // === EVENTS & HANDLERS ===
 
     /**
-     * Executado quando um marker é clicado.
+     * Obtém um Layer pelo id
      */
-    public final function onMarkerClick(string $markerId): void
+    protected function getLayerById(string $id): ?Layer
     {
-        foreach ($this->getMarkers() as $marker) {
-            if (!$marker instanceof Marker) {
-                continue;
-            }
-
-            if ($marker->clickAction && $marker->getId() == $markerId) {
-                $callback = $marker->clickAction;
-                $callback($marker);
+        foreach ($this->getLayers() as $layer) {
+            if ($layer->getId() == $id) {
+                return $layer;
             }
         }
+
+        return null;
     }
 
     /**
-     * Executado quando o mapa é clicado (área vazia).
+     * Evento disparado quando um layer é clicado
+     */
+    public function onLayerClick(string $layerId): void
+    {
+        // Busca o layer e executa sua ação
+        $layer = $this->getLayerById($layerId);
+
+        if ($layer)
+            $layer->execClickAction();
+    }
+
+    /**
+     * Executado quando o mapa é clicado.
      */
     public function onMapClick(float $latitude, float $longitude): void
     {
@@ -247,7 +293,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             Select::make('color')
                 ->translateLabel()
                 ->native(false)
-                ->options(MarkerColor::class),
+                ->options(Color::class),
 
             Textarea::make('description')
                 ->translateLabel()
@@ -275,7 +321,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             ->model(self::getMarkerModel())
             ->schema(fn(Schema $schema) => static::getFormSchema($schema))
             ->mutateDataUsing(fn(array $data) => $this->mutateFormDataBeforeCreate($data))
-            ->using(function ($model, $data) {
+            ->using(function (Model $model, array $data) {
 
                 if ($model === null) {
                     throw new Exception('The $markerModel should be defined in the class ' . static::class);
@@ -320,29 +366,24 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     protected function afterMarkerCreated(Model $record): void {}
 
     /**
-     * Formata os markers para o formato esperado pelo JS.
+     * Prepara os dados para o Frontend (JS).
      */
-    private function prepareMarkers(): array
+    #[Computed(true)]
+    private function preparedLayers(): array
     {
-        $markers = $this->getMarkers();
-
-        if (empty($markers)) {
-            return [];
-        }
-
-        return collect($markers)->map(function ($marker) {
-            if ($marker instanceof Marker) {
-                $marker->validate();
-                return $marker->toArray();
-            }
-            return $marker;
-        })->toArray();
+        return collect($this->getLayers())
+            ->map(function (Layer $layer) {
+                if (!$layer->isValid()) return;
+                return $layer->toArray();
+            })
+            ->toArray();
     }
 
     /**
      * Formata os tileLayers para o formato esperado pelo JS.
      */
-    private static function prepareTileLayersUrl(): array
+    #[Computed(true)]
+    private static function preparedTileLayersUrl(): array
     {
         return collect(static::getTileLayersUrl())
             ->map(function ($layer, $key) {
@@ -370,9 +411,9 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             'mapHeight'     => static::getMapHeight(),
             'geoJsonColors' => $this->getGeoJsonColors(),
             'geoJsonData'   => $this->getGeoJsonData(),
-            'markers'       => $this->prepareMarkers(),
             'infoText'      => static::getGeoJsonTooltip(),
-            'tileLayersUrl'  => static::prepareTileLayersUrl(),
+            'tileLayersUrl' => static::preparedTileLayersUrl(),
+            'layers'        => $this->preparedLayers(),
             'zoomConfig'    => static::getZoomOptions(),
             'mapConfig'     => static::getMapOptions(),
             'geoJsonUrl'    => $this->getGeoJsonUrl(),

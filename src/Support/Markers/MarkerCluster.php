@@ -1,19 +1,11 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support;
+namespace EduardoRibeiroDev\FilamentLeaflet\Support\Markers;
 
-use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Contracts\Support\Jsonable;
-use Illuminate\Support\Traits\Conditionable;
-use Illuminate\Support\Traits\Macroable;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
 
-class MarkerCluster implements Arrayable, Jsonable
+class MarkerCluster extends Layer
 {
-    use Conditionable;
-    use Macroable;
-
-    protected string $id;
-
     /** @var Marker|array[] */
     protected array $markers = [];
     protected ?string $group = null;
@@ -31,7 +23,6 @@ class MarkerCluster implements Arrayable, Jsonable
 
     final public function __construct(array $markers = [])
     {
-        $this->id = 'cluster_' . uniqid();
         $this->markers($markers);
     }
 
@@ -49,21 +40,28 @@ class MarkerCluster implements Arrayable, Jsonable
     |--------------------------------------------------------------------------
     */
 
-    public function id(string $id): static
+    public function getType(): string
     {
-        $this->id = $id;
-
-        return $this;
+        return 'cluster';
     }
 
-    /**
-     * Define o título do Cluster
-     */
-    public function group(?string $group)
+    protected function getLayerData(): array
     {
-        $this->group = $group;
+        return [
+            'config' => $this->options,
+            'markers' => collect($this->markers)->map(function ($marker) {
+                if ($marker instanceof Marker) {
+                    return $marker->toArray();
+                };
 
-        return $this;
+                return $marker;
+            })->toArray(),
+        ];
+    }
+
+    public function isValid(): bool
+    {
+        return true;
     }
 
     /**
@@ -195,11 +193,6 @@ class MarkerCluster implements Arrayable, Jsonable
     |--------------------------------------------------------------------------
     */
 
-    public function getId(): string
-    {
-        return $this->id;
-    }
-
     public function getMarkers(): array
     {
         return $this->markers;
@@ -213,42 +206,5 @@ class MarkerCluster implements Arrayable, Jsonable
     public function count(): int
     {
         return count($this->markers);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Serialization
-    |--------------------------------------------------------------------------
-    */
-
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'type' => 'cluster',
-            'group' => $this->group,
-            'config' => $this->options,
-            'markers' => collect($this->markers)->map(function ($marker) {
-                if ($marker instanceof Marker) {
-                    return $marker->toArray();
-                };
-
-                return $marker;
-            })->toArray(),
-        ];
-    }
-
-    public function toJson($options = 0): string
-    {
-        return json_encode($this->toArray(), $options);
-    }
-
-    public function __toString(): string
-    {
-        return sprintf(
-            '%s (%s)',
-            $this->group ?? 'MarkerCluster',
-            $this->count(),
-        );
     }
 }
