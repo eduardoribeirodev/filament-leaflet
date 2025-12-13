@@ -4,24 +4,24 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
 
 class Polyline extends Shape
 {
-    protected array $latlngs = [];
+    protected array $points = [];
 
-    final public function __construct(array $latlngs = [])
+    final public function __construct(array $points = [])
     {
         parent::__construct();
-        $this->latlngs = $latlngs;
+        $this->points = $points;
         
         $this->option('fill', false);
     }
 
-    public static function make(array $latlngs = []): static
+    public static function make(array $points = []): static
     {
-        return new static($latlngs);
+        return new static($points);
     }
 
     public function addPoint(float $latitude, float $longitude): static
     {
-        $this->latlngs[] = [$latitude, $longitude];
+        $this->points[] = [$latitude, $longitude];
         return $this;
     }
 
@@ -41,7 +41,7 @@ class Polyline extends Shape
     protected function getLayerData(): array
     {
         return [
-            'latlngs' => $this->latlngs,
+            'points' => $this->points,
             'options' => $this->getShapeOptions(),
         ];
     }
@@ -49,6 +49,6 @@ class Polyline extends Shape
     public function isValid(): bool
     {
         // Uma linha precisa de pelo menos 2 pontos
-        return count($this->latlngs) >= 2;
+        return count($this->points) >= 2;
     }
 }

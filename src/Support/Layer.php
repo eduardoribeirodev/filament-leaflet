@@ -2,6 +2,7 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Support;
 
+use Closure;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Support\Traits\Conditionable;
@@ -26,7 +27,7 @@ abstract class Layer implements Arrayable, Jsonable
     protected array $popupData = [];
 
     // Eventos e Scripts
-    protected mixed $clickAction = null;
+    protected ?Closure $clickAction = null;
     protected ?string $onMouseOverScript = null;
     protected ?string $onMouseOutScript = null;
 
@@ -157,7 +158,7 @@ abstract class Layer implements Arrayable, Jsonable
     {
         $fields = collect($fields)
             ->mapWithKeys(fn($value, $key) => [
-                __(str($key)->title()->replace('_', ' ')->toString() )=> __($value)
+                __(str($key)->title()->replace('_', ' ')->toString()) => __($value)
             ])->toArray();
 
         $this->popupData['fields'] = array_merge(
@@ -219,7 +220,7 @@ abstract class Layer implements Arrayable, Jsonable
     |--------------------------------------------------------------------------
     */
 
-    public function action(callable $callback): static
+    public function action(?Closure $callback): static
     {
         $this->clickAction = $callback;
         return $this;
@@ -246,7 +247,15 @@ abstract class Layer implements Arrayable, Jsonable
     {
         if (!isset($this->clickAction)) return;
 
-        call_user_func($this->clickAction);
+        CallbackResolver::from($this->clickAction)
+            ->parameter($this->getType(), $this)
+            ->parameters($this->getClickActionParameters())
+            ->resolve();
+    }
+
+    protected function getClickActionParameters(): array
+    {
+        return [];
     }
 
     /*

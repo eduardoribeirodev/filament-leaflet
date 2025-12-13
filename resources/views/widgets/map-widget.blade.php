@@ -103,7 +103,7 @@
                     this.createMap();
                     this.addTileLayers();
 
-                    if (this.config.geoJsonData?.length) {
+                    if (Object.keys(this.config.geoJsonData)?.length) {
                         this.setupInfoControl();
                         this.loadGeoJson();
                     }
@@ -272,10 +272,24 @@
                             layer.on('click', () => @this.onLayerClick(layerData.id));
                         }
 
+                        // Adiciona evento de mouse over
+                        if (layerData.onMouseOver) {
+                            layer.on('mouseover', function() {
+                                eval(layerData.onMouseOver);
+                            });
+                        }
+
+                        // Adiciona evento de mouse out
+                        if (layerData.onMouseOut) {
+                            layer.on('mouseout', function() {
+                                eval(layerData.onMouseOut);
+                            });
+                        }
+
                         // Adiciona ao grupo ou direto no mapa
-                        if (layerData.group) {
-                            this.layerGroups[layerData.group] = this.layerGroups[layerData.group] || L.layerGroup();
-                            this.layerGroups[layerData.group].addLayer(layer);
+                        if ((group = layerData.group)) {
+                            this.layerGroups[group] = this.layerGroups[group] || L.layerGroup();
+                            this.layerGroups[group].addLayer(layer);
                         } else {
                             layer.addTo(this.map);
                         }
@@ -361,6 +375,7 @@
                  */
                 createPolygon(data) {
                     if (!data.points) return null;
+                    console.log(data);
                     return L.polygon(data.points, data.options || {});
                 },
 
@@ -406,7 +421,7 @@
                     if (popupConfig.content) {
                         html += popupConfig.content;
                     }
-                    
+
                     if (popupConfig.fields && Object.keys(popupConfig.fields).length > 0) {
                         Object.entries(popupConfig.fields).forEach(([key, value]) => {
                             html += `<p><span class="field-label">${key}:</span> ${value}</p>`;
@@ -498,32 +513,6 @@
                         this.layerControl = null;
                     }
                 },
-
-                fitToLayers() {
-                    const layersToFit = this.layers
-                        .map(({
-                            layer
-                        }) => layer)
-                        .filter(layer => layer.getLatLng || layer.getBounds);
-
-                    if (!layersToFit.length) return;
-
-                    const group = L.featureGroup(layersToFit);
-                    this.map.fitBounds(group.getBounds().pad(0.1));
-                },
-
-                fitToGroup(name) {
-                    const group = this.layerGroups[name];
-                    if (group?.getBounds) {
-                        this.map.fitBounds(group.getBounds().pad(0.1));
-                    }
-                },
-
-                getLayerById(id) {
-                    return this.layers.find(({
-                        data
-                    }) => data.id === id);
-                }
             };
 
             MapWidget{{ $widgetId }}.init();

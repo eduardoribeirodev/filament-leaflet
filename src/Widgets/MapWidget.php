@@ -20,8 +20,7 @@ use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\On;
 use Exception;
-use Error;
-use Livewire\Attributes\Computed;
+use Filament\Forms\Components\Hidden;
 
 abstract class MapWidget extends Widget implements HasSchemas, HasActions
 {
@@ -59,16 +58,11 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
 
     // Configurações dos marcadores
     protected static ?string $markerModel = null;
+    protected static ?string $markerResource = null;
     protected static string $latitudeColumnName = 'latitude';
     protected static string $longitudeColumnName = 'longitude';
     protected static ?string $jsonCoordinatesColumnName = null;
     protected static int $formColumns = 2;
-
-    /**
-     * Estado interno para cliques
-     */
-    public ?float $clickedLatitude = null;
-    public ?float $clickedLongitude = null;
 
     /**
      * Retorna o título do widget
@@ -149,7 +143,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
      * Retorna a coleção de Markers a serem exibidos.
      * @return Marker[]
      */
-    public function getMarkers(): array
+    protected function getMarkers(): array
     {
         return [];
     }
@@ -158,35 +152,46 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
      * Retorna a coleção de Shapes a serem exibidos.
      * @return Shape[]
      */
-    public function getShapes(): array
+    protected function getShapes(): array
     {
         return [];
     }
 
     /**
-     * Retorna a coleção de Layers a serem exibidos.
+     * Retorna a coleção de todos os Layers a serem exibidos.
      * @return Layer[]
      */
-    private function getLayers(): array
+    protected function getLayers(): array
     {
-        $indexes = [];
-        $layers = array_merge(
+        return array_merge(
             $this->getMarkers(),
             $this->getShapes()
         );
+    }
 
-        return array_map(
-            function (Layer $layer) use (&$indexes) {
+    /**
+     * Processa os layers garantindo IDs únicos.
+     * 
+     * @return Layer[]
+     */
+    private function getProcessedLayers(): array
+    {
+        $indexes = [];
+        $layers = $this->getLayers();
+
+        return collect($layers)
+            ->map(function (Layer $layer) use (&$indexes) {
                 if (!$layer->getId()) {
-                    $indexes[$layer->getType()] = ($indexes[$layer->getType()] ?? 0) + 1;
-                    $id = $layer->getType() . '-' . $indexes[$layer->getType()];
+                    $type = $layer->getType();
+
+                    $indexes[$type] = ($indexes[$type] ?? 0) + 1;
+
+                    $id = $type . '-' . $indexes[$type];
                     $layer->id($id);
                 }
 
                 return $layer;
-            },
-            $layers
-        );
+            })->all();
     }
 
     /**
@@ -235,7 +240,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
      */
     protected function getLayerById(string $id): ?Layer
     {
-        foreach ($this->getLayers() as $layer) {
+        foreach ($this->getProcessedLayers() as $layer) {
             if ($layer->getId() == $id) {
                 return $layer;
             }
@@ -261,11 +266,11 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
      */
     public function onMapClick(float $latitude, float $longitude): void
     {
-        $this->clickedLatitude = $latitude;
-        $this->clickedLongitude = $longitude;
-
         if (static::$markerModel) {
-            $this->mountCreateAction();
+            $this->mountAction('createMarker', [
+                static::getLatitudeColumnName() => $latitude,
+                static::getLongitudeColumnName() => $longitude
+            ]);
         }
     }
 
@@ -308,9 +313,37 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
      */
     protected static function getFormSchema(Schema $schema): Schema
     {
-        return $schema
-            ->schema(static::getFormComponents())
-            ->columns(static::getFormColumns());
+        if (static::getMarkerResource()) {
+            $schema = static::getMarkerResource()::form($schema);
+        } else {
+            $schema->schema(static::getFormComponents());
+        }
+
+        static::ensureFormHasCoordinateFields($schema);
+
+        return $schema->columns(static::getFormColumns());
+    }
+
+    private static function ensureFormHasCoordinateFields(Schema &$form): void
+    {
+        $hasLat = $form->getComponent(static::getLatitudeColumnName());
+        $hasLng = $form->getComponent(static::getLongitudeColumnName());
+
+        if ($hasLat && $hasLng) {
+            return;
+        }
+
+        $components = $form->getComponents();
+
+        if (!$hasLat) {
+            $components[] = Hidden::make(static::getLatitudeColumnName());
+        }
+
+        if (!$hasLng) {
+            $components[] = Hidden::make(static::getLongitudeColumnName());
+        }
+
+        $form->schema($components);
     }
 
     /**
@@ -320,9 +353,19 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     {
         return CreateAction::make('createMarker')
             ->model(self::getMarkerModel())
+            ->mountUsing(function (Schema $form, array $arguments) {
+                $form->fill();
+
+                $data = array_merge(
+                    $form->getRawState(),
+                    $arguments
+                );
+
+                $form->fill($data);
+            })
             ->schema(fn(Schema $schema) => static::getFormSchema($schema))
             ->mutateDataUsing(fn(array $data) => $this->mutateFormDataBeforeCreate($data))
-            ->using(function (Model $model, array $data) {
+            ->using(function (?string $model, array $data) {
 
                 if ($model === null) {
                     throw new Exception('The $markerModel should be defined in the class ' . static::class);
@@ -333,32 +376,26 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
                     $this->refreshMap();
                     $this->dispatch('marker-created');
                     $this->afterMarkerCreated($newRecord);
-                } catch (Error | Exception $e) {
+                } catch (Exception $e) {
                     throw new Exception('Error on creating Marker: ' . $e->getMessage());
                 }
             });
     }
 
-    /**
-     * Monta (abre) a modal da action de criação.
-     */
-    protected final function mountCreateAction(): void
-    {
-        $this->mountAction('createMarker');
-    }
-
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        $coordsData = [
-            static::getLatitudeColumnName() => $this->getClickedLatitude(),
-            static::getLongitudeColumnName() => $this->getClickedLongitude()
-        ];
-
+        // Se a configuração for para salvar em JSON, converte os campos planos para array
         if (static::shouldSaveCoordinatesAsJson()) {
-            $jsonColumn = static::getJsonCoordinatesColumnName();
-            $data[$jsonColumn] = $coordsData;
-        } else {
-            $data = array_merge($data, $coordsData);
+            $latCol = static::getLatitudeColumnName();
+            $lngCol = static::getLongitudeColumnName();
+            $jsonCol = static::getJsonCoordinatesColumnName();
+
+            $data[$jsonCol] = [
+                'latitude' => $data[$latCol],
+                'longitude' => $data[$lngCol]
+            ];
+
+            unset($data[$latCol], $data[$lngCol]);
         }
 
         return $data;
@@ -369,21 +406,16 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     /**
      * Prepara os dados para o Frontend (JS).
      */
-    #[Computed(true)]
     private function preparedLayers(): array
     {
-        return collect($this->getLayers())
-            ->map(function (Layer $layer) {
-                if (!$layer->isValid()) return;
-                return $layer->toArray();
-            })
+        return collect($this->getProcessedLayers())
+            ->filter(fn(Layer $layer) => $layer->isValid())
             ->toArray();
     }
 
     /**
      * Formata os tileLayers para o formato esperado pelo JS.
      */
-    #[Computed(true)]
     private static function preparedTileLayersUrl(): array
     {
         return collect(static::getTileLayersUrl())
@@ -391,7 +423,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
                 $label = match (true) {
                     is_string($key) => $key,
                     $layer instanceof TileLayer => $layer->getLabel(),
-                    default => 'Layer ' . $key + 1
+                    default => 'Layer ' . ($key + 1)
                 };
 
                 $url = ($layer instanceof TileLayer) ? $layer->value : $layer;
@@ -428,19 +460,14 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
         return static::$markerModel;
     }
 
+    public static function getMarkerResource(): ?string
+    {
+        return static::$markerResource;
+    }
+
     public static function getFormColumns(): int
     {
         return static::$formColumns;
-    }
-
-    public function getClickedLatitude(): ?float
-    {
-        return $this->clickedLatitude;
-    }
-
-    public function getClickedLongitude(): ?float
-    {
-        return $this->clickedLongitude;
     }
 
     public static function shouldSaveCoordinatesAsJson(): bool

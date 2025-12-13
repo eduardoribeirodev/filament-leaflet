@@ -4,20 +4,20 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
 
 class Polygon extends Shape
 {
-    protected array $latlngs = [];
+    protected array $points = [];
 
     /**
-     * @param array $latlngs Array de coordenadas ex: [[-15.0, -50.0], [-15.1, -50.1], ...]
+     * @param array $points Array de coordenadas ex: [[-15.0, -50.0], [-15.1, -50.1], ...]
      */
-    final public function __construct(array $latlngs = [])
+    final public function __construct(array $points = [])
     {
         parent::__construct();
-        $this->latlngs = $latlngs;
+        $this->points = $points;
     }
 
-    public static function make(array $latlngs = []): static
+    public static function make(array $points = []): static
     {
-        return new static($latlngs);
+        return new static($points);
     }
 
     /**
@@ -25,7 +25,7 @@ class Polygon extends Shape
      */
     public function addPoint(float $latitude, float $longitude): static
     {
-        $this->latlngs[] = [$latitude, $longitude];
+        $this->points[] = [$latitude, $longitude];
         return $this;
     }
 
@@ -37,7 +37,7 @@ class Polygon extends Shape
     protected function getLayerData(): array
     {
         return [
-            'latlngs' => $this->latlngs,
+            'points' => $this->points,
             'options' => $this->getShapeOptions(),
         ];
     }
@@ -45,6 +45,6 @@ class Polygon extends Shape
     public function isValid(): bool
     {
         // Um polígono precisa de pelo menos 3 pontos para fechar uma área
-        return count($this->latlngs) >= 3;
+        return count($this->points) >= 3;
     }
 }

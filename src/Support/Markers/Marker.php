@@ -4,17 +4,16 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Support\Markers;
 
 use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
+use EduardoRibeiroDev\FilamentLeaflet\Support\CallbackResolver;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
 use EduardoRibeiroDev\FilamentLeaflet\Traits\HasColor;
-use Exception;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
-use ReflectionFunction;
 
 class Marker extends Layer
 {
     use HasColor;
-    
+
     protected float $latitude;
     protected float $longitude;
     protected bool $isDraggable = false;
@@ -114,6 +113,11 @@ class Marker extends Layer
             $this->longitude >= -180 && $this->longitude <= 180;
     }
 
+    protected function getClickActionParameters(): array
+    {
+        return ['record' => $this->record];
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Marker Specific Methods
@@ -157,38 +161,15 @@ class Marker extends Layer
     {
         $this->mapRecordCallback = $callback;
 
-        if ($this->record && is_callable($this->mapRecordCallback)) {
-            $this->resolveCallback(
-                $this->mapRecordCallback,
-                ['marker' => $this, 'record' => $this->record]
-            );
+        if ($this->record && $this->mapRecordCallback) {
+            CallbackResolver::from($this->mapRecordCallback)
+                ->resolve([
+                    'marker' => $this,
+                    'record' => $this->record
+                ]);
         }
 
         return $this;
-    }
-
-    private function resolveCallback(?callable $callback, array $context = []): mixed
-    {
-        $reflection = new ReflectionFunction($callback);
-        $arguments = [];
-
-        foreach ($reflection->getParameters() as $parameter) {
-            $name = $parameter->getName();
-
-            if (array_key_exists($name, $context)) {
-                $arguments[] = $context[$name];
-                continue;
-            }
-
-            if ($parameter->isDefaultValueAvailable()) {
-                $arguments[] = $parameter->getDefaultValue();
-                continue;
-            }
-
-            throw new Exception("Unable to resolve dependency: \${$name}");
-        }
-
-        return $callback(...$arguments);
     }
 
     /*
