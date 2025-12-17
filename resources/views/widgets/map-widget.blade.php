@@ -538,8 +538,11 @@
 
                 setupEventHandlers() {
                     this.map.on('click', (e) => {
-                        const coords = e.latlng.toString().match(/-?\d+\.\d+/g);
-                        @this.onMapClick(...coords);
+                        const coords = e.latlng;
+                        @this.onMapClick(
+                            coords['lat'],
+                            coords['lng']
+                        );
                     });
                 },
 
