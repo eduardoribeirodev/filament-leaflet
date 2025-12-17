@@ -11,7 +11,6 @@ class Polygon extends Shape
      */
     final public function __construct(array $points = [])
     {
-        parent::__construct();
         $this->points = $points;
     }
 
@@ -46,5 +45,25 @@ class Polygon extends Shape
     {
         // Um polígono precisa de pelo menos 3 pontos para fechar uma área
         return count($this->points) >= 3;
+    }
+
+    public function getCoordinates(): array
+    {
+        if (empty($this->points)) {
+            return [0, 0];
+        }
+
+        // Calcula o centroide do polígono
+        $latSum = 0;
+        $lngSum = 0;
+        foreach ($this->points as $point) {
+            $latSum += $point[0];
+            $lngSum += $point[1];
+        }
+
+        return [
+            $latSum / count($this->points),
+            $lngSum / count($this->points),
+        ];
     }
 }

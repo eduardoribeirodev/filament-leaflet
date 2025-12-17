@@ -9,7 +9,6 @@ class CircleMarker extends Shape
 
     final public function __construct(float $latitude, float $longitude)
     {
-        parent::__construct();
         $this->center = [$latitude, $longitude];
     }
 
@@ -44,5 +43,10 @@ class CircleMarker extends Shape
     public function isValid(): bool
     {
         return count($this->center) === 2 && $this->radius > 0;
+    }
+
+    public function getCoordinates(): array
+    {
+        return $this->center;
     }
 }

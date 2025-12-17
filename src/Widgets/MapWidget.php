@@ -4,7 +4,9 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Widgets;
 
 use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
+use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
+use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\LayerGroup;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Shape;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -67,6 +69,9 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     protected static string $longitudeColumnName = 'longitude';
     protected static ?string $jsonCoordinatesColumnName = null;
     protected static int $formColumns = 2;
+
+    // Cache de layers e grupos
+    private ?array $cachedLayerData = null;
 
     /**
      * Retorna o título do widget
@@ -209,7 +214,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
 
     /**
      * Retorna a coleção de todos os Layers a serem exibidos.
-     * @return Layer[]
+     * @return array<BaseLayer|BaseLayerGroup>
      */
     protected function getLayers(): array
     {
@@ -220,28 +225,72 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     }
 
     /**
-     * Processa os layers garantindo IDs únicos.
-     * 
-     * @return Layer[]
+     * Prepara e cacheia todos os dados de layers e grupos
      */
-    private function getProcessedLayers(): array
+    private function getCachedLayerData(): ?array
     {
-        $indexes = [];
-        $layers = $this->getLayers();
+        if ($this->cachedLayerData === null) {
 
-        return collect($layers)
-            ->map(function (Layer $layer) use (&$indexes) {
-                if (!$layer->getId()) {
-                    $type = $layer->getType();
+            $layers = collect($this->getLayers())
+                ->flatMap(function (BaseLayer|BaseLayerGroup $item) {
+                    if ($item instanceof BaseLayerGroup) {
+                        return $item->getLayers();
+                    }
+                    return [$item];
+                });
 
-                    $indexes[$type] = ($indexes[$type] ?? 0) + 1;
+            $groupsMap = collect();
 
-                    $id = $type . '-' . $indexes[$type];
-                    $layer->id($id);
+            $layers->each(function (BaseLayer &$layer) use (&$groupsMap) {
+                $group = $layer->getGroup();
+
+                if ($group === null) {
+                    return;
                 }
 
-                return $layer;
-            })->all();
+                if ($group instanceof BaseLayerGroup) {
+                    // Grupo já é um objeto, adiciona ao mapa pelo ID
+                    $groupsMap->put($group->getId(), $group);
+                    return;
+                }
+
+                // Grupo é string (nome), cria LayerGroup se não existir
+                $newGroup = null;
+                if ($groupsMap->has($group)) {
+                    $newGroup = $groupsMap->get($group);
+                } else {
+                    $newGroup = new LayerGroup(name: $group);
+                    $groupsMap->put($group, $newGroup);
+                }
+
+                $layer->group($newGroup);
+            });
+
+            $this->cachedLayerData = [
+                'layers' => $layers->all(),
+                'groups' => $groupsMap->values()->all(),
+            ];
+        }
+
+        return $this->cachedLayerData;
+    }
+
+    /**
+     * Retorna os layers em cache ou criá-os, caso não existam.
+     * @return array<BaseLayer>
+     */
+    private function getCachedLayers(): array
+    {
+        return $this->getCachedLayerData()['layers'];
+    }
+
+    /**
+     * Retorna os layers groups em cache ou criá-os, caso não existam.
+     * @return array<BaseLayerGroup>
+     */
+    private function getCachedLayerGroups(): array
+    {
+        return $this->getCachedLayerData()['groups'];
     }
 
     /**
@@ -288,11 +337,11 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     /**
      * Obtém um Layer pelo id
      */
-    protected function getLayerById(string $id): ?Layer
+    protected function getLayerById(string $id): ?BaseLayer
     {
-        foreach ($this->getProcessedLayers() as $layer) {
-            if ($layer->getId() == $id) {
-                return $layer;
+        foreach ($this->getCachedLayers() as &$cachedLayer) {
+            if ($cachedLayer->getId() == $id) {
+                return $cachedLayer;
             }
         }
 
@@ -307,8 +356,9 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
         // Busca o layer e executa sua ação
         $layer = $this->getLayerById($layerId);
 
-        if ($layer)
+        if ($layer) {
             $layer->execClickAction();
+        }
     }
 
     /**
@@ -327,7 +377,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     /**
      * Atualiza o mapa (dispara evento para o frontend).
      */
-    #[On('update-map')]
+    #[On('refresh-maps')]
     public function refreshMap(): void
     {
         $this->dispatch('update-leaflet-' . $this->getId(), config: $this->getWidgetData());
@@ -374,6 +424,9 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
         return $schema->columns(static::getFormColumns());
     }
 
+    /**
+     * Garante que o formulário possua os campos de coordenadas.
+     */
     private static function ensureFormHasCoordinateFields(Schema &$form): void
     {
         $hasLat = $form->getComponent(static::getLatitudeColumnName());
@@ -432,6 +485,9 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             });
     }
 
+    /**
+     * Modifica os dados do formulário antes de criar o registro.
+     */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         // Se a configuração for para salvar em JSON, converte os campos planos para array
@@ -451,6 +507,9 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
         return $data;
     }
 
+    /**
+     * Executa após a criação de um marker.
+     */
     protected function afterMarkerCreated(Model $record): void {}
 
     /**
@@ -458,8 +517,9 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
      */
     private function preparedLayers(): array
     {
-        return collect($this->getProcessedLayers())
-            ->filter(fn(Layer $layer) => $layer->isValid())
+        return collect($this->getCachedLayers())
+            ->filter(fn(BaseLayer $layer) => $layer->isValid())
+            ->values()
             ->toArray();
     }
 
@@ -490,6 +550,16 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     }
 
     /**
+     * Formata os layer groups para o formato esperado pelo JS.
+     */
+    private function preparedLayerGroups(): array
+    {
+        return collect($this->getCachedLayerGroups())
+            ->values()
+            ->toArray();
+    }
+
+    /**
      * Retorna todos os dados de configuração para o componente JS.
      */
     public final function getWidgetData(): array
@@ -502,6 +572,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             'geoJsonData'   => $this->getGeoJsonData(),
             'infoText'      => static::getGeoJsonTooltip(),
             'tileLayersUrl' => static::preparedTileLayersUrl(),
+            'layerGroups'   => $this->preparedLayerGroups(),
             'layers'        => $this->preparedLayers(),
             'zoomConfig'    => static::getZoomOptions(),
             'mapConfig'     => static::getMapOptions(),

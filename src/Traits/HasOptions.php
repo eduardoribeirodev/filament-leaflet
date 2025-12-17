@@ -6,24 +6,24 @@ trait HasOptions
 {
     protected array $options = [];
 
-    public function option(string $key, mixed $value): static
+    public function option(string $key, mixed $value, string $group = 'default'): static
     {
-        $this->options[$key] = $value;
+        $this->options[$group][$key] = $value;
         return $this;
     }
 
-    public function options(array $options, bool $merge = true): static
+    public function options(array $options, string $group = 'default', bool $merge = true): static
     {
         if ($merge) {
-            $this->options = array_merge($this->options, $options);
+            $this->options[$group] = array_merge($this->options, $options);
         } else {
-            $this->options = $options;
+            $this->options[$group] = $options;
         }
         return $this;
     }
 
-    public function getOptions(): array
+    public function getOptions(string $group = 'default'): array
     {
-        return $this->options;
+        return $this->options[$group] ?? [];
     }
 }

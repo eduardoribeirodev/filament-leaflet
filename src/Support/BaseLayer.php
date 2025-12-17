@@ -8,17 +8,13 @@ use Illuminate\Contracts\Support\Jsonable;
 use Illuminate\Support\Traits\Conditionable;
 use Illuminate\Support\Traits\Macroable;
 
-/**
- * Classe base abstrata para todos os layers do Leaflet
- * Centraliza funcionalidades comuns: popup, tooltip, eventos, grupos
- */
-abstract class Layer implements Arrayable, Jsonable
+abstract class BaseLayer implements Arrayable, Jsonable
 {
     use Conditionable;
     use Macroable;
 
     protected ?string $id = null;
-    protected ?string $group = null;
+    protected null|string|BaseLayerGroup $group = null;
 
     // Configurações de Tooltip
     protected array $tooltipData = [];
@@ -56,6 +52,11 @@ abstract class Layer implements Arrayable, Jsonable
      * Valida se o layer está configurado corretamente
      */
     abstract public function isValid(): bool;
+
+    /**
+     * Retorna as coordenadas do centro do layer [latitude, longitude]
+     */
+    abstract public function getCoordinates(): array;
 
     /*
     |--------------------------------------------------------------------------
@@ -264,24 +265,52 @@ abstract class Layer implements Arrayable, Jsonable
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Gera ID determinístico baseado nos dados do layer
+     */
+    private function generateDeterministicId(): string
+    {
+        return $this->getType() . '-' . md5($this->getDeterministicIdData());
+    }
+
+    /**
+     * Retorna os dados usados para gerar o ID determinístico
+     */
+    protected function getDeterministicIdData(): string
+    {
+        return json_encode($this->getLayerData());
+    }
+
+    /**
+     * Define o ID do layer.
+     */
     public function id(string $id): static
     {
         $this->id = $id;
         return $this;
     }
 
-    public function group(string $group): static
+    /**
+     * Define o grupo do layer.
+     */
+    public function group(null|string|BaseLayerGroup $group): static
     {
         $this->group = $group;
         return $this;
     }
 
+    /**
+     * Retorna o ID do layer.
+     */
     public function getId(): ?string
     {
-        return $this->id;
+        return $this->id ?: $this->generateDeterministicId();
     }
 
-    public function getGroup(): ?string
+    /**
+     * Retorna o grupo do layer.
+     */
+    public function getGroup(): null|string|BaseLayerGroup
     {
         return $this->group;
     }
@@ -298,9 +327,9 @@ abstract class Layer implements Arrayable, Jsonable
     protected function getBaseData(): array
     {
         $data = [
-            'id' => $this->id,
+            'id' => $this->getId(),
             'type' => $this->getType(),
-            'group' => $this->group,
+            'group' => $this->group instanceof BaseLayerGroup ? $this->group->getId() : $this->group,
             'clickAction' => isset($this->clickAction),
             'onMouseOver' => $this->onMouseOverScript,
             'onMouseOut' => $this->onMouseOutScript,
@@ -317,16 +346,17 @@ abstract class Layer implements Arrayable, Jsonable
         return $data;
     }
 
+    /**
+     * Retorna os dados do layer para serialização.
+     */
     public function toArray(): array
     {
-        // Mescla dados base com dados específicos do layer
         $data = array_merge(
             $this->getBaseData(),
             $this->getLayerData()
         );
 
-        // Filtra valores nulos para manter o payload JSON limpo
-        return array_filter($data, fn($value) => !is_null($value));
+        return array_filter($data);
     }
 
     public function toJson($options = 0): string

@@ -9,7 +9,6 @@ class Circle extends Shape
 
     final public function __construct(float $latitude, float $longitude)
     {
-        parent::__construct();
         $this->center = [$latitude, $longitude];
     }
 
@@ -69,7 +68,7 @@ class Circle extends Shape
         return [
             'center' => $this->center,
             'radius' => $this->radius,
-            'options' => $this->getShapeOptions(), 
+            'options' => $this->getShapeOptions(),
         ];
     }
 
@@ -79,5 +78,10 @@ class Circle extends Shape
             $this->center[0] >= -90 && $this->center[0] <= 90 &&
             $this->center[1] >= -180 && $this->center[1] <= 180 &&
             $this->radius > 0;
+    }
+
+    public function getCoordinates(): array
+    {
+        return $this->center;
     }
 }

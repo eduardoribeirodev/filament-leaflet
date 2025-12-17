@@ -15,6 +15,6 @@ trait InteractsWithMap
 
     protected function afterActionCalled(Action $action): void
     {
-        $this->dispatch('update-map');
+        $this->dispatch('refresh-maps');
     }
 }

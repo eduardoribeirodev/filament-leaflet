@@ -2,12 +2,12 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
 
-use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
+use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Traits\HasColor;
 use EduardoRibeiroDev\FilamentLeaflet\Traits\HasFillColor;
 use EduardoRibeiroDev\FilamentLeaflet\Traits\HasOptions;
 
-abstract class Shape extends Layer
+abstract class Shape extends BaseLayer
 {
     use HasColor;
     use HasFillColor;

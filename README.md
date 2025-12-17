@@ -31,7 +31,11 @@ php artisan filament:assets
 - [Quick Start](#quick-start)
 - [Map Widget Configuration](#map-widget-configuration)
 - [Working with Markers](#working-with-markers)
-- [Marker Clusters](#marker-clusters)
+- [Layer Groups](#layer-groups)
+  - [LayerGroup](#layer-group)
+  - [FeatureGroup](#feature-group)
+  - [MarkerCluster](#marker-cluster)
+  - [Combining Multiple Groups](#combining-multiple-layer-groups)
 - [Shapes](#shapes)
 - [Popups and Tooltips](#popups-and-tooltips)
 - [Click Actions](#click-actions)
@@ -103,6 +107,7 @@ You can enable or disable UI controls individually using the widget flags. Use t
 - `hasZoomControl`: show/hide the zoom control
 - `hasFullscreenControl`: show/hide the fullscreen control
 - `hasSearchControl`: show/hide the search control
+
 Examples
 
 - Enable controls from the widget class:
@@ -274,13 +279,13 @@ protected function getMarkers(): array
 If your coordinates are stored as JSON:
 
 ```php
-// Database structure: coordinates => {"latitude": -23.5505, "longitude": -46.6333}
+// Database structure: coordinates => {"lat": -23.5505, "lng": -46.6333}
 
 Marker::fromRecord(
     record: $store,
     jsonColumn: 'coordinates',      // Column containing JSON
-    latColumn: 'latitude',           // Key in JSON object
-    lngColumn: 'longitude',          // Key in JSON object
+    latColumn: 'lat',               // Key in JSON object
+    lngColumn: 'lng',               // Key in JSON object
     titleColumn: 'name',
 );
 ```
@@ -313,12 +318,143 @@ Marker::fromRecord(
 );
 ```
 
-## Marker Clusters
+## Layer Groups
 
-Group nearby markers into clusters for better performance and cleaner maps:
+Layer groups are a powerful way to organize and manage multiple layers on your map. They allow you to:
+
+- **Toggle visibility** - Show/hide entire groups of layers at once
+- **Organize layers** - Group related markers and shapes together
+- **Improve performance** - Manage large datasets efficiently
+- **Control layer management** - Add/remove layers from groups dynamically
+
+### Layer Group
+
+A simple container for organizing related layers. Perfect for grouping logically related markers and shapes without any automatic behavior:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\MarkerCluster;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\LayerGroup;
+
+protected function getMarkers(): array
+{
+    return [
+        LayerGroup::make([
+            Marker::make(-23.5505, -46.6333)->title('Store 1'),
+            Marker::make(-23.5515, -46.6343)->title('Store 2'),
+            Marker::make(-23.5525, -46.6353)->title('Store 3'),
+        ])
+        ->name('Active Stores')
+        ->id('active-stores'),
+    ];
+}
+```
+
+**Using the `group()` helper method (shorthand):**
+
+Instead of wrapping layers in `LayerGroup::make()`, you can use the `group()` method on any layer to automatically group multiple layers:
+
+```php
+protected function getMarkers(): array
+{
+    return [
+        Marker::make(-23.5505, -46.6333)
+            ->title('Store 1')
+            ->group('Active Stores'),
+        
+        Marker::make(-23.5515, -46.6343)
+            ->title('Store 2')
+            ->group('Active Stores'),
+        
+        Marker::make(-23.5525, -46.6353)
+            ->title('Store 3')
+            ->group('Active Stores'),
+    ];
+}
+```
+
+The `group()` method automatically creates a LayerGroup instance for all layers with the same group name, providing a cleaner syntax when you don't need `LayerGroup::make()` complexity.
+
+**Advanced example with mixed layers:**
+
+```php
+LayerGroup::make([
+    // Markers
+    Marker::make(-23.5505, -46.6333)->title('Store 1')->blue(),
+    Marker::make(-23.5515, -46.6343)->title('Store 2')->blue(),
+    
+    // Shapes
+    Circle::make(-23.5505, -46.6333)
+        ->radiusInKilometers(5)
+        ->blue()
+        ->fillOpacity(0.1),
+    
+    // Popups and tooltips work on all layers
+])
+->name('Store Coverage')
+->id('store-coverage-group');
+```
+
+### Feature Group
+
+Creates a polygon envelope around all layers in the group. This is useful for visualizing the coverage area or boundary of a set of points:
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\FeatureGroup;
+
+protected function getMarkers(): array
+{
+    return [
+        FeatureGroup::make([
+            Marker::make(-23.5505, -46.6333)->title('Point 1'),
+            Marker::make(-23.5515, -46.6343)->title('Point 2'),
+            Marker::make(-23.5525, -46.6323)->title('Point 3'),
+        ])
+        ->name('Delivery Zone')
+        ->blue()
+        ->fillBlue()
+        ->fillOpacity(0.2)
+        ->weight(2)
+        ->dashArray('5, 10'),
+    ];
+}
+```
+
+**Real-world example with custom styling:**
+
+```php
+FeatureGroup::make([
+    Marker::make(-23.5505, -46.6333)->title('Warehouse A'),
+    Marker::make(-23.5615, -46.6443)->title('Warehouse B'),
+    Marker::make(-23.5425, -46.6223)->title('Warehouse C'),
+])
+->name('Supply Chain Network')
+->id('supply-chain')
+->orange()          // Border color
+->fillColor(Color::Yellow)  // Fill color
+->fillOpacity(0.15) // Semi-transparent fill
+->weight(3)         // Thicker border
+->opacity(0.8);
+```
+
+**Feature groups with event handlers:**
+
+```php
+FeatureGroup::make($warehouseMarkers)
+    ->name('Warehouses')
+    ->green()
+    ->action(function (FeatureGroup $group) {
+        Notification::make()
+            ->title('Warehouse Zone Clicked')
+            ->body('This is the warehouse coverage area')
+            ->send();
+    });
+```
+
+### Marker Cluster
+
+Groups nearby markers into clusters for better performance and visual clarity, especially with large datasets. Clusters automatically expand when zooming in:
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\MarkerCluster;
 
 protected function getMarkers(): array
 {
@@ -336,9 +472,9 @@ protected function getMarkers(): array
 }
 ```
 
-### Cluster from Model
+**Cluster from Model:**
 
-Create clusters directly from Eloquent models:
+Create clusters directly from Eloquent models with powerful customization:
 
 ```php
 use App\Models\Store;
@@ -361,7 +497,7 @@ protected function getMarkers(): array
 }
 ```
 
-### Cluster with Query Modification
+**Cluster with Query Modification:**
 
 Filter and customize the query used to load markers:
 
@@ -377,31 +513,127 @@ MarkerCluster::fromModel(
             ->orderBy('name');
     },
     mapRecordCallback: function (Marker $marker, Model $record) {
-        // Customize each marker
+        // Customize each marker based on record properties
         if ($record->isPremium()) {
             $marker->gold()->icon('/images/premium-icon.png');
         }
+        
+        // Add status-based styling
+        match($record->status) {
+            'open' => $marker->green(),
+            'busy' => $marker->orange(),
+            'closed' => $marker->red(),
+            default => $marker->grey(),
+        };
+        
+        // Add popup with custom fields
+        $marker->popupFields([
+            'manager' => $record->manager_name,
+            'staff' => $record->staff_count . ' employees',
+            'rating' => $record->rating . ' ⭐',
+        ]);
     }
 );
 ```
 
-### Cluster Configuration
-
-Fine-tune cluster behavior:
+**Advanced cluster configuration:**
 
 ```php
 MarkerCluster::make($markers)
     ->maxClusterRadius(80)              // Cluster radius in pixels
-    ->showCoverageOnHover(true)         // Show cluster coverage on hover
-    ->zoomToBoundsOnClick(true)         // Zoom to cluster bounds on click
+    ->showCoverageOnHover(true)         // Highlight cluster area on hover
+    ->zoomToBoundsOnClick(true)         // Zoom to cluster bounds when clicked
     ->spiderfyOnMaxZoom(true)           // Spread markers at max zoom
-    ->removeOutsideVisibleBounds(true)  // Remove markers outside viewport
-    ->disableClusteringAtZoom(15)       // Disable clustering at zoom level
-    ->options([                          // Additional Leaflet options
-        'animate' => true,
+    ->removeOutsideVisibleBounds(true)  // Remove markers outside viewport for performance
+    ->disableClusteringAtZoom(15)       // Stop clustering at zoom level 15+
+    ->animate(true)                     // Animate cluster changes
+    ->options([                         // Custom Leaflet options
+        'maxClusterRadius' => 100,
         'animateAddingMarkers' => true,
     ]);
 ```
+
+### Combining Multiple Layer Groups
+
+You can combine different layer groups in the same map to create complex, multi-layered visualizations:
+
+```php
+use App\Models\Store;
+use App\Models\Warehouse;
+use App\Models\Partner;
+
+protected function getLayers(): array
+{
+    return [
+        // Group 1: Stores with clustering
+        MarkerCluster::fromModel(
+            model: Store::class,
+            latColumn: 'latitude',
+            lngColumn: 'longitude',
+            titleColumn: 'name',
+            color: Color::Blue,
+        )
+        ->name('Retail Stores')
+        ->maxClusterRadius(80),
+        
+        // Group 2: Warehouses with feature group
+        FeatureGroup::make([
+            Warehouse::all()->map(fn($w) => 
+                Marker::make($w->latitude, $w->longitude)
+                    ->title($w->name)
+                    ->red()
+            )->toArray()
+        ])
+        ->name('Warehouses')
+        ->orange()
+        ->fillOpacity(0.1),
+        
+        // Group 3: Partners as simple layer group
+        LayerGroup::make([
+            Partner::active()->get()->map(fn($p) => 
+                Marker::make($p->latitude, $p->longitude)
+                    ->title($p->company_name)
+                    ->green()
+                    ->popupFields([
+                        'contact' => $p->contact_name,
+                        'phone' => $p->phone,
+                    ])
+            )->toArray()
+        ])
+        ->name('Partner Locations')
+        ->id('partners-group'),
+        
+        // Group 4: Service areas with shapes
+        LayerGroup::make([
+            Circle::make(-23.5505, -46.6333)
+                ->radiusInKilometers(25)
+                ->blue()
+                ->fillBlue()
+                ->fillOpacity(0.05)
+                ->popupContent('Primary service area'),
+            
+            Circle::make(-23.5505, -46.6333)
+                ->radiusInKilometers(50)
+                ->blue()
+                ->dashArray('5, 5')
+                ->fillOpacity(0)
+                ->popupContent('Extended service area'),
+        ])
+        ->name('Service Areas')
+        ->id('service-areas'),
+    ];
+}
+```
+
+This example demonstrates:
+- **Clustering** for high-volume data (stores)
+- **Feature groups** for geographic boundaries (warehouse coverage)
+- **Simple groups** for categorical data (partners)
+- **Shape combinations** for visualizing service areas
+
+**Toggling visibility in the UI:**
+
+Layer groups automatically appear in the Leaflet controls when a name is set, allowing users to toggle them on/off from the map interface.
 
 ## Shapes
 
@@ -1032,7 +1264,7 @@ public static function getMapOptions(): array
 
 Notes:
 
-- Please, keep the `zoomControl` and `attributionControl` set as false. It is managed in the [Map Controls](#map-controls) section.
+- Please, keep the `zoomControl` and `attributionControl` set as `false`. It is managed in the [Map Controls](#map-controls) section.
 
 ### Complete Example
 
@@ -1044,7 +1276,7 @@ namespace App\Filament\Widgets;
 use App\Models\Store;
 use EduardoRibeiroDev\FilamentLeaflet\Widgets\MapWidget;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\MarkerCluster;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\MarkerCluster;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Circle;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Polygon;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
@@ -1218,28 +1450,12 @@ class StoreMapWidget extends MapWidget
 | `color($color)` | Set marker color |
 | `icon($url, $size)` | Set custom icon |
 | `draggable($bool)` | Make marker draggable |
-| `group($group)` | Assign to group |
+| `group($group)` | Assign to group (string or BaseLayerGroup) |
 | `popup($content, $fields, $options)` | Configure popup |
 | `tooltip($content, $permanent, $direction, $options)` | Configure tooltip |
 | `action($callback)` | Set click handler |
 | `distanceTo($marker)` | Calculate distance to another marker |
 | `validate()` | Validate coordinates |
-
-### MarkerCluster Methods
-
-| Method | Description |
-|--------|-------------|
-| `make($markers)` | Create cluster with markers |
-| `fromModel()` | Create cluster from Eloquent model |
-| `marker($marker)` | Add single marker |
-| `markers($array)` | Add multiple markers |
-| `maxClusterRadius($pixels)` | Set cluster radius |
-| `showCoverageOnHover($bool)` | Show coverage on hover |
-| `zoomToBoundsOnClick($bool)` | Zoom to bounds on click |
-| `spiderfyOnMaxZoom($bool)` | Spread markers at max zoom |
-| `disableClusteringAtZoom($level)` | Disable clustering at zoom level |
-| `modifyQueryUsing($callback)` | Modify database query |
-| `mapRecordUsing($callback)` | Customize marker creation |
 
 ### Shape Methods (All Shapes)
 
@@ -1255,7 +1471,8 @@ class StoreMapWidget extends MapWidget
 | `popup($content, $fields, $options)` | Configure popup |
 | `tooltip($content, $permanent, $direction, $options)` | Configure tooltip |
 | `action($callback)` | Set click handler |
-| `group($group)` | Assign to group |
+| `group($group)` | Assign to group (string or BaseLayerGroup) |
+| `getCoordinates()` | Get center coordinates of the shape |
 
 ### Circle Specific Methods
 
@@ -1294,6 +1511,54 @@ class StoreMapWidget extends MapWidget
 |--------|-------------|
 | `make($corner1, $corner2)` | Create with corners |
 | `makeFromCoordinates($lat1, $lng1, $lat2, $lng2)` | Create with coordinates |
+
+### BaseLayerGroup Methods (All Layer Groups)
+
+| Method | Description |
+|--------|-------------|
+| `make($layers)` | Create layer group with layers |
+| `id($id)` | Set group ID |
+| `name($name)` | Set group name |
+| `option($key, $value)` | Set a group option |
+| `options($array)` | Set multiple group options |
+| `getLayers()` | Get all layers in the group |
+
+### LayerGroup Methods
+
+| Method | Description |
+|--------|-------------|
+| `make($layers)` | Create simple layer group |
+| `name($name)` | Set user-visible group name |
+| `id($id)` | Set group ID for controls |
+
+### FeatureGroup Methods
+
+| Method | Description |
+|--------|-------------|
+| `make($markers)` | Create feature group from markers |
+| `name($name)` | Set zone/area name |
+| `blue()`, `red()`, etc. | Set border color |
+| `fillBlue()`, `fillRed()`, etc. | Set fill color |
+| `fillOpacity($value)` | Set fill transparency (0-1) |
+| `weight($pixels)` | Set border width |
+
+### MarkerCluster Methods
+
+| Method | Description |
+|--------|-------------|
+| `make($markers)` | Create cluster with markers |
+| `fromModel()` | Create cluster from Eloquent model |
+| `marker($marker)` | Add single marker |
+| `markers($array)` | Add multiple markers |
+| `name($name)` | Set cluster group name |
+| `maxClusterRadius($pixels)` | Set cluster radius (pixels) |
+| `showCoverageOnHover($bool)` | Show cluster coverage on hover |
+| `zoomToBoundsOnClick($bool)` | Zoom to bounds when clicked |
+| `spiderfyOnMaxZoom($bool)` | Spread markers at max zoom |
+| `disableClusteringAtZoom($level)` | Disable clustering at zoom level |
+| `animate($bool)` | Animate cluster changes |
+| `modifyQueryUsing($callback)` | Modify database query |
+| `mapRecordUsing($callback)` | Customize each marker |
 
 ## Color Reference
 

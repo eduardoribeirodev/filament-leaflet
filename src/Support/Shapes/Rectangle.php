@@ -12,7 +12,6 @@ class Rectangle extends Shape
      */
     final public function __construct(array $corner1, array $corner2)
     {
-        parent::__construct();
         $this->bounds = [$corner1, $corner2];
     }
 
@@ -47,5 +46,19 @@ class Rectangle extends Shape
         return count($this->bounds) === 2 
             && count($this->bounds[0]) === 2 
             && count($this->bounds[1]) === 2;
+    }
+
+    public function getCoordinates(): array
+    {
+        // Calcula o centro do retângulo
+        $lat1 = $this->bounds[0][0];
+        $lng1 = $this->bounds[0][1];
+        $lat2 = $this->bounds[1][0];
+        $lng2 = $this->bounds[1][1];
+
+        return [
+            ($lat1 + $lat2) / 2,
+            ($lng1 + $lng2) / 2,
+        ];
     }
 }

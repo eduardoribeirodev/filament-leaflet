@@ -4,13 +4,13 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Support\Markers;
 
 use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
+use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Support\CallbackResolver;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
 use EduardoRibeiroDev\FilamentLeaflet\Traits\HasColor;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 
-class Marker extends Layer
+class Marker extends BaseLayer
 {
     use HasColor;
 
@@ -85,7 +85,7 @@ class Marker extends Layer
 
     /*
     |--------------------------------------------------------------------------
-    | Layer Abstract Methods Implementation
+    | Métodos abstratos do Layer
     |--------------------------------------------------------------------------
     */
 
@@ -118,9 +118,18 @@ class Marker extends Layer
         return ['record' => $this->record];
     }
 
+    protected function getDeterministicIdData(): string
+    {
+        if ($this->record) {
+            return $this->record->getTable() . '-' . ($this->record->getKey() ?? $this->latitude . ',' . $this->longitude);
+        }
+
+        return parent::getDeterministicIdData();
+    }
+
     /*
     |--------------------------------------------------------------------------
-    | Marker Specific Methods
+    | Métodos do Marker
     |--------------------------------------------------------------------------
     */
 
@@ -139,17 +148,14 @@ class Marker extends Layer
 
     /*
     |--------------------------------------------------------------------------
-    | Record Binding
+    | Vínculo com Record
     |--------------------------------------------------------------------------
     */
 
     public function record(Model $record, ?Closure $mapRecordCallback = null): static
     {
         $this->record = $record;
-
-        return $this
-            ->id($record->getKey())
-            ->mapRecordUsing($mapRecordCallback);
+        return $this->mapRecordUsing($mapRecordCallback);
     }
 
     public function getRecord(): ?Model
@@ -174,7 +180,7 @@ class Marker extends Layer
 
     /*
     |--------------------------------------------------------------------------
-    | Utilities
+    | Utilitários
     |--------------------------------------------------------------------------
     */
 

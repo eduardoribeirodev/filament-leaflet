@@ -110,6 +110,7 @@
                         this.loadGeoJson();
                     }
 
+                    this.addLayerGroups();
                     this.addLayers();
                     this.setupEventHandlers();
                     this.setupLivewireListeners();
@@ -229,13 +230,9 @@
                     this.config.layers.forEach(layerData => {
                         let layer = null;
 
-                        // Cria o layer baseado no tipo
                         switch (layerData.type) {
                             case 'marker':
                                 layer = this.createMarker(layerData);
-                                break;
-                            case 'cluster':
-                                layer = this.createCluster(layerData);
                                 break;
                             case 'circle':
                                 layer = this.createCircle(layerData);
@@ -289,9 +286,8 @@
                         }
 
                         // Adiciona ao grupo ou direto no mapa
-                        if ((group = layerData.group)) {
-                            this.layerGroups[group] = this.layerGroups[group] || L.layerGroup();
-                            this.layerGroups[group].addLayer(layer);
+                        if (layerData.group) {
+                            this.layerGroups[layerData.group]['layer'].addLayer(layer);
                         } else {
                             layer.addTo(this.map);
                         }
@@ -302,9 +298,37 @@
                             data: layerData
                         });
                     });
+                },
 
-                    // Adiciona os grupos ao mapa
-                    Object.values(this.layerGroups).forEach(group => group.addTo(this.map));
+                addLayerGroups() {
+                    if (!Object.keys(this.config.layerGroups)?.length > 0) return;
+
+                    this.config.layerGroups.forEach(layerGroupData => {
+                        let layerGroup = null;
+
+                        switch (layerGroupData.type) {
+                            case 'group':
+                                layerGroup = L.layerGroup(layerGroupData.options);
+                                break;
+                            case 'feature':
+                                layerGroup = L.featureGroup(layerGroupData.options);
+                                break;
+                            case 'cluster':
+                                layerGroup = L.markerClusterGroup(layerGroupData.options);
+                                break;
+                        }
+
+                        if (!layerGroup) return;
+
+                        // Adiciona o grupo ao mapa
+                        layerGroup.addTo(this.map);
+
+                        // Salva referência
+                        this.layerGroups[layerGroupData.id] = {
+                            'name': layerGroupData.name,
+                            'layer': layerGroup
+                        };
+                    })
                 },
 
                 /**
@@ -315,37 +339,12 @@
 
                     const marker = L.marker([data.lat, data.lng], {
                         icon: this.createIcon(data),
-                        title: data.title || data.popup?.title || data.tooltip?.content || '',
+                        title: data.title || data.popup?.title || data.tooltip
+                            ?.content || '',
                         draggable: data.draggable || false
                     });
 
                     return marker;
-                },
-
-                /**
-                 * Cria um cluster de marcadores
-                 */
-                createCluster(clusterData) {
-                    const cluster = L.markerClusterGroup(clusterData.config || {});
-
-                    if (!clusterData.markers?.length) return null;
-
-                    clusterData.markers.forEach(markerData => {
-                        const marker = this.createMarker(markerData);
-                        if (!marker) return;
-
-                        if (markerData.popup) {
-                            this.bindPopup(marker, markerData.popup);
-                        }
-
-                        if (markerData.tooltip) {
-                            this.bindTooltip(marker, markerData.tooltip);
-                        }
-
-                        cluster.addLayer(marker);
-                    });
-
-                    return cluster;
                 },
 
                 /**
@@ -377,7 +376,6 @@
                  */
                 createPolygon(data) {
                     if (!data.points) return null;
-                    console.log(data);
                     return L.polygon(data.points, data.options || {});
                 },
 
@@ -403,7 +401,8 @@
                     if (marker.icon) {
                         options.iconUrl = marker.icon;
                     } else {
-                        options.iconUrl = `{{ $imgsPath }}/marker-icon-2x-${marker.color}.png`;
+                        options.iconUrl =
+                            `{{ $imgsPath }}/marker-icon-2x-${marker.color}.png`;
                         options.shadowUrl = `{{ $imgsPath }}/marker-shadow.png`;
                     }
 
@@ -424,9 +423,11 @@
                         html += popupConfig.content;
                     }
 
-                    if (popupConfig.fields && Object.keys(popupConfig.fields).length > 0) {
+                    if (popupConfig.fields && Object.keys(popupConfig.fields).length >
+                        0) {
                         Object.entries(popupConfig.fields).forEach(([key, value]) => {
-                            html += `<p><span class="field-label">${key}:</span> ${value}</p>`;
+                            html +=
+                                `<p><span class="field-label">${key}:</span> ${value}</p>`;
                         });
                     }
 
@@ -446,8 +447,14 @@
                 },
 
                 setupLayerControl() {
+                    let overlays = Object.values(this.layerGroups)
+                        .filter((group) => group && group.name)
+                        .map((group) => [group.name, group.layer]);
+
+                    overlays = Object.fromEntries(overlays);
+
                     const hasBaseLayers = Object.keys(this.baseLayers).length > 1;
-                    const hasOverlays = Object.keys(this.layerGroups).length > 0;
+                    const hasOverlays = Object.keys(overlays).length > 0;
 
                     if (!hasBaseLayers && !hasOverlays) {
                         return;
@@ -459,7 +466,7 @@
 
                     this.layerControl = L.control.layers(
                         this.baseLayers,
-                        this.layerGroups
+                        overlays,
                     ).addTo(this.map);
                 },
 
@@ -537,7 +544,8 @@
                 },
 
                 setupLivewireListeners() {
-                    window.addEventListener('update-leaflet-{{ $widgetId }}', (event) => {
+                    window.addEventListener('update-leaflet-{{ $widgetId }}', (
+                        event) => {
                         this.updateMapData(event.detail.config);
                     });
                 },
@@ -573,7 +581,8 @@
                     this.layers = [];
 
                     // Limpa grupos
-                    Object.values(this.layerGroups).forEach(group => this.map.removeLayer(group));
+                    Object.values(this.layerGroups).forEach(group => this.map
+                        .removeLayer(group));
                     this.layerGroups = {};
 
                     if (this.layerControl) {

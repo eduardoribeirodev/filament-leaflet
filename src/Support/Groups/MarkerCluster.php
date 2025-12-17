@@ -1,21 +1,20 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support\Markers;
+namespace EduardoRibeiroDev\FilamentLeaflet\Support\Groups;
 
 use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Layer;
+use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
 use EduardoRibeiroDev\FilamentLeaflet\Traits\HasColor;
-use EduardoRibeiroDev\FilamentLeaflet\Traits\HasOptions;
 use Illuminate\Database\Eloquent\Model;
 
-class MarkerCluster extends Layer
+class MarkerCluster extends BaseLayerGroup
 {
     use HasColor;
-    use HasOptions;
 
     /** @var Marker|array[] */
-    protected array $markers = [];
+    protected ?array $modelMarkers = null;
     protected ?string $group = null;
 
     // Model Binding Configuration
@@ -32,12 +31,10 @@ class MarkerCluster extends Layer
     protected ?array $popupFieldsColumns = null;
     protected ?string $iconUrl = null;
 
-    final public function __construct(array $markers)
-    {
-        $this->markers($markers);
-    }
-
-    public static function make(array $markers): static
+    /**
+     * @param array<Marker> $markers
+     */
+    public static function make(?array $markers = null): static
     {
         return new static($markers);
     }
@@ -84,7 +81,7 @@ class MarkerCluster extends Layer
 
     /*
     |--------------------------------------------------------------------------
-    | Gerenciamento de Marcadores
+    | Métodos abstratos do Layer Group
     |--------------------------------------------------------------------------
     */
 
@@ -93,22 +90,15 @@ class MarkerCluster extends Layer
         return 'cluster';
     }
 
-    protected function getLayerData(): array
-    {
-        return [
-            'config' => $this->getOptions(),
-            'markers' => collect($this->getMarkers())->toArray(),
-        ];
-    }
-
-    public function isValid(): bool
-    {
-        return true;
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Gerenciamento de Marcadores
+    |--------------------------------------------------------------------------
+    */
 
     public function marker(Marker|array $marker): static
     {
-        $this->markers[] = $marker;
+        $this->layers[] = $marker;
         return $this;
     }
 
@@ -122,7 +112,7 @@ class MarkerCluster extends Layer
 
     public function clearMarkers(): static
     {
-        $this->markers = [];
+        $this->layers = [];
         return $this;
     }
 
@@ -134,17 +124,16 @@ class MarkerCluster extends Layer
 
     /**
      * Retorna a combinação dos marcadores manuais e dos marcadores vindos do Model.
+     * @return array<Marker>
      */
-    public function getMarkers(): array
+    public function getLayers(): array
     {
-        $allMarkers = $this->markers;
-
-        if ($this->model) {
-            $modelMarkers = $this->resolveModelMarkers();
-            $allMarkers = array_merge($allMarkers, $modelMarkers);
+        if ($this->model && !$this->modelMarkers) {
+            $this->modelMarkers = $this->resolveModelMarkers();
+            $this->layers = array_merge($this->layers, $this->modelMarkers);
         }
 
-        return $allMarkers;
+        return parent::getLayers();
     }
 
     /**
@@ -210,9 +199,14 @@ class MarkerCluster extends Layer
         return $this->option('disableClusteringAtZoom', $zoomLevel);
     }
 
+    public function animate(int $animate): static
+    {
+        return $this->option('animate', $animate);
+    }
+
     /*
     |--------------------------------------------------------------------------
-    | Model Binding Methods
+    | Vínculo com Model
     |--------------------------------------------------------------------------
     */
 
@@ -238,16 +232,5 @@ class MarkerCluster extends Layer
     {
         $this->iconUrl = $url;
         return $this;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Getters
-    |--------------------------------------------------------------------------
-    */
-
-    public function count(): int
-    {
-        return count($this->getMarkers());
     }
 }

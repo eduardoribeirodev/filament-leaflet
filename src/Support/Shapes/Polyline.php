@@ -8,7 +8,6 @@ class Polyline extends Shape
 
     final public function __construct(array $points = [])
     {
-        parent::__construct();
         $this->points = $points;
         
         $this->option('fill', false);
@@ -50,5 +49,25 @@ class Polyline extends Shape
     {
         // Uma linha precisa de pelo menos 2 pontos
         return count($this->points) >= 2;
+    }
+
+    public function getCoordinates(): array
+    {
+        if (empty($this->points)) {
+            return [0, 0];
+        }
+
+        // Calcula o ponto médio da linha
+        $latSum = 0;
+        $lngSum = 0;
+        foreach ($this->points as $point) {
+            $latSum += $point[0];
+            $lngSum += $point[1];
+        }
+
+        return [
+            $latSum / count($this->points),
+            $lngSum / count($this->points),
+        ];
     }
 }
