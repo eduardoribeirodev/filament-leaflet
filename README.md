@@ -26,6 +26,8 @@ Publish the assets:
 php artisan filament:assets
 ```
 
+This will publish the Leaflet assets used by the package — the distribution now includes draw toolbar, marker cluster control, fullscreen control and geosearch toolbar assets.
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)
@@ -107,6 +109,7 @@ You can enable or disable UI controls individually using the widget flags. Use t
 - `hasZoomControl`: show/hide the zoom control
 - `hasFullscreenControl`: show/hide the fullscreen control
 - `hasSearchControl`: show/hide the search control
+ - `hasDrawControl`: enable/disable the draw toolbar control
 
 Examples
 
@@ -119,6 +122,7 @@ class MyMapWidget extends MapWidget
     protected static bool $hasScaleControl = true;
     protected static bool $hasZoomControl = true;
     protected static bool $hasFullscreenControl = true;
+    protected static bool $hasDrawControl = true;
     protected static bool $hasSearchControl = true;
 }
 ```

@@ -82,6 +82,10 @@
             background-position: center;
         }
 
+        .leaflet-draw-toolbar a {
+            background-image: url('{{ $imgsPath }}/spritesheet-2x.png') !important;
+        }
+
         {!! $this->getCustomStyles() !!}
     </style>
 
@@ -99,6 +103,8 @@
                 geoJsonLayer: null,
                 info: null,
                 layerControl: null,
+                editableLayers: null,
+                isDrawing: false,
 
                 init() {
                     this.createMap();
@@ -490,6 +496,10 @@
                     if (this.config.mapControls.searchControl) {
                         this.setupSearchControl();
                     }
+
+                    if (this.config.mapControls.drawControl) {
+                        this.setupDrawControl();
+                    }
                 },
 
                 setupAttributionControl() {
@@ -536,13 +546,71 @@
                     this.map.addControl(fullscreen);
                 },
 
+                setupDrawControl() {
+                    this.editableLayers = new L.FeatureGroup();
+                    this.map.addLayer(this.editableLayers);
+
+                    const draw = new L.Control.Draw({
+                        edit: {
+                            featureGroup: this.editableLayers,
+                        },
+                        draw: {
+                            marker: {
+                                icon: this.createIcon({
+                                    color: 'blue'
+                                })
+                            }
+                        }
+                    });
+
+                    this.map.addControl(draw);
+                },
+
                 setupEventHandlers() {
+                    // Evento de click no mapa - só processa se NÃO estiver desenhando
                     this.map.on('click', (e) => {
-                        const coords = e.latlng;
-                        @this.onMapClick(
-                            coords['lat'],
-                            coords['lng']
-                        );
+                        if (!this.isDrawing) {
+                            const coords = e.latlng;
+                            @this.onMapClick(
+                                coords['lat'],
+                                coords['lng']
+                            );
+                        }
+                    });
+
+                    // Eventos do Draw Control - controlar estado de desenho
+                    this.map.on('draw:drawstart', () => {
+                        this.isDrawing = true;
+                    });
+
+                    this.map.on('draw:drawstop', () => {
+                        this.isDrawing = false;
+                    });
+
+                    this.map.on('draw:canceled', () => {
+                        this.isDrawing = false;
+                    });
+
+                    // Eventos de edição
+                    this.map.on('draw:editstart', () => {
+                        this.isDrawing = true;
+                    });
+
+                    this.map.on('draw:editstop', () => {
+                        this.isDrawing = false;
+                    });
+
+                    // Eventos de exclusão
+                    this.map.on('draw:deletestart', () => {
+                        this.isDrawing = true;
+                    });
+
+                    this.map.on('draw:deletestop', () => {
+                        this.isDrawing = false;
+                    });
+
+                    this.map.on('draw:created', (e) => {
+                        this.editableLayers.addLayer(e.layer);
                     });
                 },
 

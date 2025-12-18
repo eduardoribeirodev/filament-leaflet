@@ -39,11 +39,15 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     protected static array $mapCenter = [-14.235, -51.9253]; // Centro do Brasil
     protected static int $defaultZoom = 4;
     protected static int $mapHeight = 504;
+
+    // Configurações de controles
     protected static bool $hasAttributionControl = true;
     protected static bool $hasFullscreenControl = false;
     protected static bool $hasSearchControl = false;
     protected static bool $hasScaleControl = false;
     protected static bool $hasZoomControl = false;
+    protected static bool $hasDrawControl = true;
+
     protected static int $maxZoom = 18;
     protected static int $minZoom = 2;
 
@@ -146,6 +150,14 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     }
 
     /**
+     * Define se o controle de desenho deve ser exibido.
+     */
+    public static function hasDrawControl(): bool
+    {
+        return static::$hasDrawControl;
+    }
+
+    /**
      * Retorna as URLs das camadas de tiles
      */
     public static function getTileLayersUrl(): TileLayer|string|array
@@ -187,6 +199,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
             'attributionControl' => static::hasAttributionControl(),
             'scaleControl'       => static::hasScaleControl(),
             'zoomControl'        => static::hasZoomControl(),
+            'drawControl'        => static::hasDrawControl(),
             'fullscreenControl'  => static::hasFullscreenControl(),
             'searchControl'      => static::hasSearchControl(),
         ];
