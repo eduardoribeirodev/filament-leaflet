@@ -559,7 +559,8 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
                 $attribution  = ($layer instanceof TileLayer) ? $layer->getAttribution() : null;
 
                 return [$label, $url, $attribution];
-            })->toArray();
+            })->values()
+            ->toArray();
     }
 
     /**
@@ -646,3 +647,4 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
         return "";
     }
 }
+
