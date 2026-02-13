@@ -1,0 +1,52 @@
+{
+    "name": "eduardoribeirodev/filament-leaflet-postgis",
+    "description": "PostGIS and advanced spatial support for Filament Leaflet",
+    "version": "1.0.0-dev",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "EduardoRibeiroDev",
+            "email": "eduardo@example.com"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "filament/filament": "^4.0|^5.0",
+        "eduardoribeirodev/filament-leaflet": "^4.4",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/database": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "pestphp/pest": "^3.0|^4.0",
+        "orchestra/testbench": "^9.0|^10.0"
+    },
+    "suggest": {
+        "matanyadaev/laravel-eloquent-spatial": "For enhanced Eloquent spatial support"
+    },
+    "autoload": {
+        "psr-4": {
+            "EduardoRibeiroDev\\FilamentLeafletPostgis\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "EduardoRibeiroDev\\FilamentLeafletPostgis\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "EduardoRibeiroDev\\FilamentLeafletPostgis\\PostGISServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
