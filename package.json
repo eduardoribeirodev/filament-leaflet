@@ -1,0 +1,36 @@
+{
+  "name": "filament-leaflet",
+  "version": "1.0.0",
+  "description": "A powerful and elegant Leaflet integration for Filament PHP that makes creating interactive maps a breeze. Build beautiful, feature-rich maps with markers, clusters, shapes, and more using a fluent, expressive API.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eduardoribeirodev/filament-leaflet.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/eduardoribeirodev/filament-leaflet/issues"
+  },
+  "homepage": "https://github.com/eduardoribeirodev/filament-leaflet#readme",
+  "devDependencies": {
+    "esbuild": "^0.27.2",
+    "vite": "^7.3.0",
+    "vite-plugin-static-copy": "^3.1.4"
+  },
+  "dependencies": {
+    "@geoman-io/leaflet-geoman-free": "^2.19.2",
+    "leaflet": "^1.9.4",
+    "leaflet-draw": "^1.0.4",
+    "leaflet-geosearch": "^4.2.2",
+    "leaflet.fullscreen": "^5.1.1",
+    "leaflet.markercluster": "^1.5.3",
+    "vue": "^3.5.26"
+  }
+}

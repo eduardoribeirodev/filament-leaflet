@@ -1,0 +1,426 @@
+<?php
+
+namespace EduardoRibeiroDev\FilamentLeaflet\Support;
+
+use Closure;
+use Filament\Support\Concerns\EvaluatesClosures;
+use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Contracts\Support\Jsonable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use Illuminate\Support\Traits\Conditionable;
+use Illuminate\Support\Traits\Macroable;
+
+abstract class BaseLayer implements Arrayable, Jsonable
+{
+    use Conditionable;
+    use Macroable;
+    use EvaluatesClosures;
+
+    protected ?string $id = null;
+    protected null|string|BaseLayerGroup $group = null;
+    protected bool $isEditable = false;
+
+    // Configurações de Tooltip
+    protected array $tooltipData = [];
+
+    // Configurações de Popup
+    protected array $popupData = [];
+
+    // Eventos e Scripts
+    protected ?Closure $clickAction = null;
+    protected ?string $onMouseOverScript = null;
+    protected ?string $onMouseOutScript = null;
+
+    // Record Binding
+    protected ?Model $record = null;
+    protected ?Closure $mapRecordCallback = null;
+
+    public function __construct(?string $id = null)
+    {
+        $this->id = $id;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Abstract Methods - Devem ser implementados nas subclasses
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Retorna o tipo de layer para o frontend (marker, circle, polygon, etc)
+     */
+    abstract public function getType(): string;
+
+    /**
+     * Retorna os dados específicos do layer para serialização
+     */
+    abstract protected function getLayerData(): array;
+
+    /**
+     * Valida se o layer está configurado corretamente
+     */
+    abstract public function isValid(): bool;
+
+    /**
+     * Retorna as coordenadas do centro do layer [latitude, longitude]
+     */
+    abstract public function getCoordinates(): array;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tooltip Methods
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Configura o conteúdo do tooltip.
+     */
+    public function tooltipContent(?string $content): static
+    {
+        $this->tooltipData['content'] = $content;
+        return $this;
+    }
+
+    /**
+     * Define se o tooltip será permanente.
+     */
+    public function tooltipPermanent(bool $permanent = true): static
+    {
+        $this->tooltipOption('permanent', $permanent);
+        return $this;
+    }
+
+    /**
+     * Define a direção do tooltip (ex: 'auto', 'top', 'bottom', 'left', 'right').
+     */
+    public function tooltipDirection(string $direction = 'auto'): static
+    {
+        $this->tooltipOption('direction', $direction);
+        return $this;
+    }
+
+    /**
+     * Define uma opção adicional para o tooltip.
+     */
+    public function tooltipOption(string $option, mixed $value): static
+    {
+        $this->tooltipOptions([$option => $value]);
+        return $this;
+    }
+
+    /**
+     * Define opções adicionais para o tooltip.
+     */
+    public function tooltipOptions(array $options): static
+    {
+        $this->tooltipData['options'] = array_merge(
+            $this->tooltipData['options'] ?? [],
+            $options
+        );
+        return $this;
+    }
+
+    /**
+     * Método de conveniência para configurar tooltip completo
+     */
+    public function tooltip(
+        string $content,
+        bool $permanent = false,
+        string $direction = 'auto',
+        array $options = []
+    ): static {
+        return $this
+            ->tooltipContent($content)
+            ->tooltipPermanent($permanent)
+            ->tooltipDirection($direction)
+            ->tooltipOptions($options);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Popup Methods
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Configura o título do popup.
+     */
+    public function popupTitle(?string $title): static
+    {
+        $this->popupData['title'] = $title;
+        return $this;
+    }
+
+    /**
+     * Configura o conteúdo do popup.
+     */
+    public function popupContent(?string $content): static
+    {
+        $this->popupData['content'] = $content;
+        return $this;
+    }
+
+    /**
+     * Define opções adicionais para o popup.
+     */
+    public function popupFields(array|Collection $fields): static
+    {
+        $collectedFields = is_array($fields) ? collect($fields) : $fields;
+
+        $mappedFields = $collectedFields->mapWithKeys(function($value, $key) {
+            $label = str($key)->replace(['-', '_'], ' ')->title()->toString();
+            $content = (string) $value;
+            
+            return [__($label) => __($content) ?: '--'];
+        })->toArray();
+
+        $this->popupData['fields'] = array_merge(
+            $this->popupData['fields'] ?? [],
+            $mappedFields
+        );
+
+        return $this;
+    }
+
+    /**
+     * Define uma opção adicional para o popup.
+     */
+    public function popupOption(string $option, mixed $value): static
+    {
+        $this->popupOptions([$option => $value]);
+        return $this;
+    }
+
+    /**
+     * Define opções adicionais para o popup.
+     */
+    public function popupOptions(array $options): static
+    {
+        $this->popupData['options'] = array_merge(
+            $this->popupData['options'] ?? [],
+            $options
+        );
+        return $this;
+    }
+
+    /**
+     * Método de conveniência para definir popup completo
+     */
+    public function popup(
+        string $content,
+        array $fields = [],
+        array $options = []
+    ): static {
+        return $this
+            ->popupContent($content)
+            ->popupFields($fields)
+            ->popupOptions($options);
+    }
+
+    /**
+     * Método de conveniência para definir popupTitle e tooltipContent
+     */
+    public function title(?string $title)
+    {
+        return $this
+            ->tooltipContent($title)
+            ->popupTitle($title);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Event Listeners
+    |--------------------------------------------------------------------------
+    */
+
+    public function action(?Closure $callback): static
+    {
+        $this->clickAction = $callback;
+        return $this;
+    }
+
+    public function onClick(callable $callback): static
+    {
+        return $this->action($callback);
+    }
+
+    public function onMouseOver(string $script): static
+    {
+        $this->onMouseOverScript = $script;
+        return $this;
+    }
+
+    public function onMouseOut(string $script): static
+    {
+        $this->onMouseOutScript = $script;
+        return $this;
+    }
+
+    public function execClickAction()
+    {
+        if (!isset($this->clickAction)) return;
+
+        $this->evaluate($this->clickAction);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Record Binding
+    |--------------------------------------------------------------------------
+    */
+
+    public function record(Model $record, ?Closure $mapRecordCallback = null): static
+    {
+        $this->record = $record;
+        return $this->mapRecordUsing($mapRecordCallback);
+    }
+
+    public function getRecord(): ?Model
+    {
+        return $this->record;
+    }
+
+    public function mapRecordUsing(?Closure $callback): static
+    {
+        $this->mapRecordCallback = $callback;
+        return $this->evaluate($this->mapRecordCallback) ?? $this;
+    }
+
+    /**
+     * @return array<mixed>
+     */
+    protected function resolveDefaultClosureDependencyForEvaluationByName(string $parameterName): array
+    {
+        return match ($parameterName) {
+            'record', Str::singular(class_basename($this->getRecord())) => [$this->getRecord()],
+            $this->getType(), 'layer' => [$this],
+            default => []
+        };
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Group & Identity
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Gera ID determinístico baseado nos dados do layer
+     */
+    private function generateDeterministicId(): string
+    {
+        return $this->getType() . '-' . md5($this->getDeterministicIdData());
+    }
+
+    /**
+     * Retorna os dados usados para gerar o ID determinístico
+     */
+    protected function getDeterministicIdData(): string
+    {
+        return json_encode($this->getLayerData());
+    }
+
+    /**
+     * Define o ID do layer.
+     */
+    public function id(string $id): static
+    {
+        $this->id = $id;
+        return $this;
+    }
+
+    /**
+     * Define o grupo do layer.
+     */
+    public function group(null|string|BaseLayerGroup $group): static
+    {
+        $this->group = $group;
+        return $this;
+    }
+
+    /**
+     * Retorna o ID do layer.
+     */
+    public function getId(): ?string
+    {
+        return $this->id ?: $this->generateDeterministicId();
+    }
+
+    /**
+     * Retorna o grupo do layer.
+     */
+    public function getGroup(): null|string|BaseLayerGroup
+    {
+        return $this->group;
+    }
+
+    /**
+     * Define se o layer é editável.
+     */
+    public function editable(bool $editable = true): static
+    {
+        $this->isEditable = $editable;
+        return $this;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Serialization
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Retorna os dados comuns a todos os layers
+     */
+    protected function getBaseData(): array
+    {
+        $data = [
+            'id'           => $this->getId(),
+            'type'         => $this->getType(),
+            'group'        => $this->group instanceof BaseLayerGroup ? $this->group->getId() : $this->group,
+            'clickAction'  => isset($this->clickAction),
+            'onMouseOver'  => $this->onMouseOverScript,
+            'onMouseOut'   => $this->onMouseOutScript,
+            'pmIgnore'     => !$this->isEditable,
+        ];
+
+        if (array_filter($this->tooltipData)) {
+            $data['tooltip'] = array_filter($this->tooltipData);
+        }
+
+        if (array_filter($this->popupData)) {
+            $data['popup'] = array_filter($this->popupData);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Retorna os dados do layer para serialização.
+     */
+    public function toArray(): array
+    {
+        $data = array_merge(
+            $this->getBaseData(),
+            $this->getLayerData()
+        );
+
+        return array_filter($data);
+    }
+
+    public function toJson($options = 0): string
+    {
+        return json_encode($this->toArray(), $options);
+    }
+
+    public function __toString(): string
+    {
+        return sprintf(
+            '%s [%s]',
+            class_basename($this),
+            $this->id
+        );
+    }
+}
