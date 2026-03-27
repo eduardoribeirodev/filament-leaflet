@@ -30,7 +30,7 @@ class MapColumn extends Column
 
     public function getId()
     {
-        $json = json_encode($this->getState());
+        $json = json_encode($this->getState() ?? uniqid());
         return md5($json);
     }
 
@@ -48,10 +48,17 @@ class MapColumn extends Column
             return $record->{$this->getName()};
         }
 
-        return [
-            $this->latitudeFieldName => $record->{$this->latitudeFieldName} ?? $this->mapCenter[0],
-            $this->longitudeFieldName => $record->{$this->longitudeFieldName} ?? $this->mapCenter[1]
-        ];
+        if (
+            ($latitude = $record->{$this->latitudeFieldName} ?? null) &&
+            ($longitude = $record->{$this->longitudeFieldName} ?? null)
+        ) {
+            return [
+                $this->latitudeFieldName => $latitude,
+                $this->longitudeFieldName => $longitude
+            ];
+        }
+
+        return null;
     }
 
     public function getWidth(): ?string

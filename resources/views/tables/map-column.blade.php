@@ -1,14 +1,22 @@
 @php
     $config = $getMapData();
+    $state = $getState();
+    $placeholder = $getPlaceholder();
 @endphp
 
 <div 
     style="width: {{ $getWidth() }}; padding: 5px;"
     wire:key="{{ $config['mapId'] }}"
 >
-    <x-filament-leaflet::map
-        :config="$config"
-        column
-    />
+    @if (!$state && $placeholder)
+        <p class="fi-ta-placeholder">
+            {{ $placeholder }}
+        </p>
+    @else
+        <x-filament-leaflet::map
+            :config="$config"
+            column
+        />
+    @endif
 
 </div>

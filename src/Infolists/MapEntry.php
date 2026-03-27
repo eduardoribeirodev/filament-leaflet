@@ -19,10 +19,17 @@ class MapEntry extends Entry
             return $record->{$this->getName()};
         }
 
-        return [
-            $this->latitudeFieldName => $record->{$this->latitudeFieldName} ?? $this->mapCenter[0],
-            $this->longitudeFieldName => $record->{$this->longitudeFieldName} ?? $this->mapCenter[1]
-        ];
+        if (
+            ($latitude = $record->{$this->latitudeFieldName} ?? null) &&
+            ($longitude = $record->{$this->longitudeFieldName} ?? null)
+        ) {
+            return [
+                $this->latitudeFieldName => $latitude,
+                $this->longitudeFieldName => $longitude
+            ];
+        }
+
+        return null;
     }
 
     protected function setUp(): void
