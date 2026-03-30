@@ -51,9 +51,8 @@ document.addEventListener('livewire:init', () => {
             watchState() {
                 if (!this.config.state) return;
 
-                this.$watch('state', (value) => {
-                    // Update Livewire when local state changes
-                    this.setState(value.lat, value.lng);
+                this.$wire.watch(this.config.state.statePath, () => {
+                    this.updatePickMarker();
                 });
             },
 
