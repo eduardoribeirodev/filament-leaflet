@@ -21,6 +21,7 @@ use Exception;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Illuminate\Contracts\View\View;
 
 abstract class MapWidget extends Widget implements HasSchemas, HasActions
 {
@@ -276,5 +277,14 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     protected function getJsonCoordinatesColumnName(): ?string
     {
         return $this->jsonCoordinatesColumnName;
+    }
+
+    /**
+     * Atualiza o mapa toda vez que é renderizado
+     */
+    public function render(): View
+    {
+        $this->refreshMap();
+        return parent::render();
     }
 }
