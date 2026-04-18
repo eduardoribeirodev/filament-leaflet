@@ -750,29 +750,115 @@ export class LeafletMapCore {
     }
 
     /**
+     * Atualiza marcadores já existentes (mesmo id) quando coords, popup ou ícone mudam
+     * (ex.: Livewire / wire:poll). Preserva add/remove por id em updateMapData.
+     */
+    syncExistingMarkers(prevLayers, nextLayers) {
+        nextLayers.forEach((layerData) => {
+            if (layerData.type !== 'marker') {
+                return;
+            }
+
+            const oldLayerData = prevLayers.find((oldLayer) => oldLayer.id == layerData.id);
+            if (!oldLayerData || oldLayerData.type !== 'marker') {
+                return;
+            }
+
+            const entry = this.layers.get(layerData.id);
+            if (!entry?.layer) {
+                return;
+            }
+
+            const marker = Alpine.raw(entry.layer);
+
+            const newCoords = layerData.coords;
+            if (Array.isArray(newCoords) && newCoords.length >= 2) {
+                const cur = marker.getLatLng();
+                const eps = 1e-7;
+                if (
+                    Math.abs(cur.lat - newCoords[0]) > eps ||
+                    Math.abs(cur.lng - newCoords[1]) > eps
+                ) {
+                    marker.setLatLng(newCoords);
+                }
+            }
+
+            const oldPopup = oldLayerData.popup;
+            const newPopup = layerData.popup;
+
+            if (newPopup) {
+                const titleChanged = (oldPopup?.title ?? '') !== (newPopup.title ?? '');
+                const contentChanged = (oldPopup?.content ?? '') !== (newPopup.content ?? '');
+
+                if (!oldPopup || titleChanged || contentChanged) {
+                    if (marker.getPopup()) {
+                        marker.unbindPopup();
+                    }
+                    this.bindPopup(marker, newPopup);
+                }
+            } else if (oldPopup && marker.getPopup()) {
+                marker.unbindPopup();
+            }
+
+            const oldIcon = oldLayerData.icon;
+            const newIcon = layerData.icon;
+
+            if (newIcon) {
+                const urlChanged = (oldIcon?.url ?? '') !== (newIcon.url ?? '');
+                const sizeChanged =
+                    JSON.stringify(oldIcon?.size ?? []) !== JSON.stringify(newIcon.size ?? []);
+                const colorChanged = (oldIcon?.color ?? '') !== (newIcon.color ?? '');
+                const heroChanged = (oldIcon?.heroicon ?? '') !== (newIcon.heroicon ?? '');
+
+                if (!oldIcon || urlChanged || sizeChanged || colorChanged || heroChanged) {
+                    marker.setIcon(this.createIcon(newIcon));
+                }
+            }
+
+            this.layers.set(layerData.id, {
+                layer: entry.layer,
+                data: layerData,
+            });
+        });
+
+        this.layerGroups.forEach(({ layer }) => {
+            const rawLayer = Alpine.raw(layer);
+            if (rawLayer && typeof rawLayer.refreshClusters === 'function') {
+                rawLayer.refreshClusters();
+            }
+        });
+    }
+
+    /**
      * Atualiza os dados do mapa
      */
     updateMapData(newConfig) {
         const oldConfig = this.config;
+        const prevLayers = [...(oldConfig.layersData ?? [])];
+
         this.config = newConfig;
+
+        const nextLayers = [...(this.config.layersData ?? [])];
 
         let layersToAdd = [];
         let layersToRemove = [];
 
-        oldConfig.layersData.forEach((layerData) => {
-            if (!this.config.layersData.find((newLayer) => newLayer.id == layerData.id)) {
+        prevLayers.forEach((layerData) => {
+            if (!nextLayers.find((newLayer) => newLayer.id == layerData.id)) {
                 layersToRemove.push(layerData);
             }
         });
 
-        this.config.layersData.forEach((layerData) => {
-            if (!oldConfig.layersData.find((oldLayer) => oldLayer.id == layerData.id)) {
+        nextLayers.forEach((layerData) => {
+            if (!prevLayers.find((oldLayer) => oldLayer.id == layerData.id)) {
                 layersToAdd.push(layerData);
             }
         });
 
         layersToRemove.forEach((layerData) => this.removeLayer(layerData));
         layersToAdd.forEach((layerData) => this.addLayer(layerData));
+
+        this.syncExistingMarkers(prevLayers, nextLayers);
 
         if (Object.keys(this.config.geoJsonData)?.length) {
             this.setupInfoControl();
