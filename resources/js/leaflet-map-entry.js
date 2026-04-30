@@ -21,12 +21,14 @@ document.addEventListener('livewire:init', () => {
              * Get the current state from the field
              */
             getState() {
-                if (!this.config.state) return undefined;
-
                 const state = this.config.state.state;
+                console.log(state);
+
+                if (!state) return undefined;
+
                 return {
-                    lat: state ? state[this.config.state.latitudeFieldName] : this.config.defaultCoord[0],
-                    lng: state ? state[this.config.state.longitudeFieldName] : this.config.defaultCoord[1]
+                    lat: state[this.config.state.latitudeFieldName],
+                    lng: state[this.config.state.longitudeFieldName]
                 }
             },
 
@@ -34,11 +36,13 @@ document.addEventListener('livewire:init', () => {
              * Update the pick marker position
              */
             setupPickMarker() {
-                const coords = this.getState();
-
                 if (this.pickMarker) {
                     Alpine.raw(this.pickMarker).removeFrom(Alpine.raw(this.mapCore.map));
                 }
+
+                const coords = this.getState();
+                
+                if (!coords) return;
 
                 let markerOptions = this.config.state.pickMarker;
                 markerOptions.coords = Object.values(coords);

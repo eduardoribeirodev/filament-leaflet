@@ -25,9 +25,10 @@ document.addEventListener('livewire:init', () => {
                 if (!this.config.state) return undefined;
 
                 const state = this.$wire.get(this.config.state.statePath);
+                if (!state) return undefined;
                 return {
-                    lat: state ? state[this.config.state.latitudeFieldName] : this.config.defaultCoord[0],
-                    lng: state ? state[this.config.state.longitudeFieldName] : this.config.defaultCoord[1]
+                    lat: state[this.config.state.latitudeFieldName],
+                    lng: state[this.config.state.longitudeFieldName]
                 }
             },
 
@@ -65,6 +66,8 @@ document.addEventListener('livewire:init', () => {
                 }
 
                 const coords = this.getState();
+
+                if (!coords) return;
 
                 let markerOptions = this.config.state.pickMarker;
                 markerOptions.coords = Object.values(coords);

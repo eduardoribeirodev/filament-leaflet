@@ -21,12 +21,13 @@ document.addEventListener('livewire:init', () => {
              * Get the current state from the field
              */
             getState() {
-                if (!this.config.state) return undefined;
-
                 const state = this.config.state.state;
+
+                if (!state) return undefined;
+
                 return {
-                    lat: state ? state[this.config.state.latitudeFieldName] : this.config.defaultCoord[0],
-                    lng: state ? state[this.config.state.longitudeFieldName] : this.config.defaultCoord[1]
+                    lat: state[this.config.state.latitudeFieldName],
+                    lng: state[this.config.state.longitudeFieldName]
                 }
             },
 
