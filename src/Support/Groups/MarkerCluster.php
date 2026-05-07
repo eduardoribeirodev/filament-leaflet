@@ -3,7 +3,6 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Groups;
 
 use Closure;
-use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
 use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayerGroup;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasColor;
@@ -29,11 +28,10 @@ class MarkerCluster extends BaseLayerGroup
     protected ?string $model = null;
     protected ?Closure $modifyQueryCallback = null;
     protected ?Closure $mapRecordCallback = null;
+    protected ?bool $syncRecords = null;
 
     // Mapeamento de colunas
-    protected ?string $latColumn = null;
-    protected ?string $lngColumn = null;
-    protected ?string $jsonColumn = null;
+    protected ?string $coordsColumn = null;
     protected ?string $titleColumn = null;
     protected ?string $descriptionColumn = null;
     protected ?array $popupFieldsColumns = null;
@@ -44,21 +42,20 @@ class MarkerCluster extends BaseLayerGroup
      * @param array<Marker> $markers An optional array of Marker instances to initialize the cluster with. You can add markers to the cluster later using the marker() or markers() methods, or by binding an Eloquent model with the fromModel() method.
      * @return static
      */
-    public static function make(?array $markers = null): static
+    public static function make(array $markers = []): static
     {
         return new static($markers);
     }
 
     /**
-     * Convenience method to create a MarkerCluster instance directly from an Eloquent model. This method allows you to specify the model class, the columns for latitude and longitude (or a JSON column with coordinates), as well as optional columns for title, description, and popup fields. You can also provide callbacks to modify the query and map records to markers, and set a custom icon URL for the markers in this cluster.
-     * @param string $model The Eloquent model class that will be used to fetch data for the markers in this cluster. The model should have columns for latitude and longitude (or a JSON column with coordinates) that will be used to create the markers. You can also specify additional columns for title, description, and popup fields. Optionally, you can provide callbacks to modify the query and map records to markers.
-     * @param string $latColumn The name of the column in the model that contains the latitude value for the markers. Default is 'latitude'.
-     * @param string $lngColumn The name of the column in the model that contains the longitude value for the markers. Default is 'longitude'.
-     * @param string|null $jsonColumn The name of the column in the model that contains a JSON object with the coordinates for the markers. This can be used as an alternative to specifying separate latitude and longitude columns. The JSON object should have 'lat' and 'lng' properties. Default is null.
+     * Convenience method to create a MarkerCluster instance directly from an Eloquent model. This method allows you to specify the model class, the coordinate attribute column, as well as optional columns for title, description, and popup fields. You can also provide callbacks to modify the query and map records to markers, and set a custom icon URL for the markers in this cluster.
+     * @param string $model The Eloquent model class that will be used to fetch data for the markers in this cluster. The model should have a coordinate attribute that returns a Coordinate instance.
+     * @param string|null $coordsColumn The name of the attribute in the model that contains the coordinates. Default is null.
      * @param string|null $titleColumn The name of the column in the model that contains the title for the marker popups. Default is null.
      * @param string|null $descriptionColumn The name of the column in the model that contains the description for the marker popups. Default is null.
      * @param array|null $popupFieldsColumns An array of column names in the model that should be included as fields in the marker popups. Default is null.
-     * @param string|array|null $color The color to be used for the markers in this cluster. This can be a string representing a color (e.g., 'red', '#ff0000') or an instance of the Color enum. Default is null.
+     * @param null|string|Closure|array $color The color to be used for the markers in this cluster. This can be a string representing a color (e.g., 'red', '#ff0000') or an instance of the Color enum. Default is null.
+     * @param bool|null $syncRecords Whether to sync changes back to the records when the markers are edited on the map. If true, any changes made to the markers on the map (such as dragging to a new location) will be saved back to the corresponding records in the database. Default is null.
      * @param string|null $iconUrl The URL of the icon to be used for each marker in this cluster. Default is null.
      * @param Closure|null $mapRecordCallback A callback to map each Eloquent record to a Marker instance. The callback should accept an instance of Illuminate\Database\Eloquent\Model and return a Marker instance. This allows you to customize how each record is transformed into a marker, including setting custom properties or using different columns for the marker's attributes. Default is null.
      * @param Closure|null $modifyQueryCallback A callback to modify the Eloquent query used to fetch records for the markers. The callback should accept an instance of Illuminate\Database\Eloquent\Builder and return the modified query builder. This allows you to apply additional constraints, eager loading, or any other query modifications before the records are fetched and transformed into markers. Default is null.
@@ -66,37 +63,28 @@ class MarkerCluster extends BaseLayerGroup
      */
     public static function fromModel(
         string $model,
-        string $latColumn = 'latitude',
-        string $lngColumn = 'longitude',
-        ?string $jsonColumn = null,
+        ?string $coordsColumn = null,
         ?string $titleColumn = null,
         ?string $descriptionColumn = null,
         ?array $popupFieldsColumns = null,
-        string|array|null $color = null,
+        null|string|Closure|array $color = null,
+        ?bool $syncRecords = null,
         ?string $iconUrl = null,
         ?Closure $mapRecordCallback = null,
         ?Closure $modifyQueryCallback = null
     ): static {
-        $instance = new static([]);
+        $instance = new static;
 
         $instance->model = $model;
-        $instance->latColumn = $latColumn;
-        $instance->lngColumn = $lngColumn;
-        $instance->jsonColumn = $jsonColumn;
+        $instance->coordsColumn = $coordsColumn;
         $instance->titleColumn = $titleColumn;
         $instance->descriptionColumn = $descriptionColumn;
         $instance->popupFieldsColumns = $popupFieldsColumns;
         $instance->color($color);
-        $instance->iconUrl = $iconUrl;
-
-        // Callbacks
-        if ($mapRecordCallback) {
-            $instance->mapRecordUsing($mapRecordCallback);
-        }
-
-        if ($modifyQueryCallback) {
-            $instance->modifyQueryUsing($modifyQueryCallback);
-        }
+        $instance->iconUrl($iconUrl);
+        $instance->syncRecords = $syncRecords;
+        $instance->mapRecordUsing($mapRecordCallback);
+        $instance->modifyQueryUsing($modifyQueryCallback);
 
         return $instance;
     }
@@ -176,13 +164,12 @@ class MarkerCluster extends BaseLayerGroup
         return $query->get()->map(
             fn(Model $record) => Marker::fromRecord(
                 record: $record,
-                latColumn: $this->latColumn,
-                lngColumn: $this->lngColumn,
-                jsonColumn: $this->jsonColumn,
+                coordsColumn: $this->coordsColumn,
                 titleColumn: $this->titleColumn,
                 descriptionColumn: $this->descriptionColumn,
                 popupFieldsColumns: $this->popupFieldsColumns,
                 color: $this->color,
+                syncRecord: $this->syncRecords,
                 iconUrl: $this->iconUrl,
                 mapRecordCallback: $this->mapRecordCallback
             )
@@ -316,7 +303,7 @@ class MarkerCluster extends BaseLayerGroup
      * @param string $url The URL of the icon to be used for each marker in this cluster.
      * @return $this
      */
-    public function iconUrl(string $url): static
+    public function iconUrl(?string $url): static
     {
         $this->iconUrl = $url;
         return $this;

@@ -3,8 +3,7 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Concerns;
 
 use Closure;
-use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
-use Filament\Support\Colors\Color as FilamentColor;
+use Filament\Support\Colors\Color;
 
 trait HasFillColor
 {
@@ -95,21 +94,21 @@ trait HasFillColor
     }
 
     /**
-     * Set the fill color of the layer to black. This method is a convenience method that allows you to quickly set the fill color of the layer to black without having to specify the color as a string or using the Color enum directly. It internally calls the fillColor() method with the appropriate value for black, making it easier and more intuitive to set common fill colors for your map layers.
-     * @return static The current instance with the fillColor property set to black.
+     * Set the color of the layer to black. This method is a convenience method that allows you to quickly set the color of the layer to black without having to specify the color as a string or using the Color enum directly. It internally calls the color() method with the appropriate value for black, making it easier and more intuitive to set common colors for your map layers.
+     * @return static The current instance with the color property set to black.
      */
-    public function fillBlack(): static
+    public function black(): static
     {
-        return $this->fillColor(Color::Black);
+        return $this->fillColor('#000000');
     }
 
     /**
-     * Set the fill color of the layer to gold. This method is a convenience method that allows you to quickly set the fill color of the layer to gold without having to specify the color as a string or using the Color enum directly. It internally calls the fillColor() method with the appropriate value for gold, making it easier and more intuitive to set common fill colors for your map layers.
-     * @return static The current instance with the fillColor property set to gold.
+     * Set the color of the layer to gold. This method is a convenience method that allows you to quickly set the color of the layer to gold without having to specify the color as a string or using the Color enum directly. It internally calls the color() method with the appropriate value for gold, making it easier and more intuitive to set common colors for your map layers.
+     * @return static The current instance with the color property set to gold.
      */
-    public function fillGold(): static
+    public function gold(): static
     {
-        return $this->fillColor(Color::Gold);
+        return $this->fillColor('#FFD700');
     }
 
     /**
@@ -155,7 +154,7 @@ trait HasFillColor
                 : array_first($color);
         }
 
-        return FilamentColor::convertToRgb($color);
+        return Color::convertToRgb($color);
     }
 
     public function getDefaultFillColor(): string|array

@@ -19,7 +19,7 @@
 <div
     wire:ignore
     x-data="{{ $mapClass }}(
-        $wire, 
+        $wire,
         {{ Js::from($config) }},
     )"
     style="height: {{ $config['mapHeight'] }}px; width: 100%"

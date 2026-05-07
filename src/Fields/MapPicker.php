@@ -3,6 +3,7 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Fields;
 
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasMapState;
+use EduardoRibeiroDev\FilamentLeaflet\StateCasts\CoordinatesStateCast;
 use Filament\Forms\Components\Field;
 
 class MapPicker extends Field
@@ -10,39 +11,21 @@ class MapPicker extends Field
     use HasMapState;
     protected string $view = 'filament-leaflet::fields.map-picker';
 
-    public function isDehydrated(): bool
+    public function getDefaultStateCasts(): array
     {
-        return false;
+        return [
+            app(CoordinatesStateCast::class),
+        ];
     }
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->height(284);
-        $this->saveRelationshipsUsing(function ($record, $state) {
-            if ($this->storeAsJson) {
-                $record->{$this->getName()} = [
-                    $this->latitudeFieldName => $state[$this->latitudeFieldName],
-                    $this->longitudeFieldName => $state[$this->longitudeFieldName]
-                ];
-            } else {
-                $record->{$this->latitudeFieldName} = $state[$this->latitudeFieldName];
-                $record->{$this->longitudeFieldName} = $state[$this->longitudeFieldName];
-            }
-
-            $record->save();
-        });
-        $this->afterStateHydrated(function ($record) {
-            if (!$record) return;
-
-            if ($this->storeAsJson) {
-                $this->state($record->{$this->getName()});
-            } else {
-                $this->state([
-                    $this->latitudeFieldName => $record->{$this->latitudeFieldName} ?? $this->mapCenter[0],
-                    $this->longitudeFieldName => $record->{$this->longitudeFieldName} ?? $this->mapCenter[1]
-                ]);
-            }
-        });
+        $this->afterStateHydrated(
+            fn($record, $component) => $component->state(
+                $record?->getAttribute($component->getName())
+            )
+        );
     }
 }

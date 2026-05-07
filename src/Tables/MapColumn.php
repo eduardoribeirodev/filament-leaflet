@@ -83,24 +83,5 @@ class MapColumn extends Column
         $this->recenterTimeout(5000);
         $this->minZoom(0);
         $this->pickMarker(fn(Marker $marker) => $marker->icon(size: [14, 25]));
-        $this->state(function ($record) {
-            if (!$record) return null;
-
-            if ($this->storeAsJson) {
-                return $record->{$this->getName()};
-            }
-
-            if (
-                ($latitude = $record->{$this->latitudeFieldName} ?? null) &&
-                ($longitude = $record->{$this->longitudeFieldName} ?? null)
-            ) {
-                return [
-                    $this->latitudeFieldName => $latitude,
-                    $this->longitudeFieldName => $longitude
-                ];
-            }
-
-            return null;
-        });
     }
 }

@@ -4,21 +4,13 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Support\Markers;
 
 use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
-use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasColor;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Filament\Support\Enums\IconSize;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 
 class Marker extends BaseLayer
 {
-    use HasColor;
-
-    protected string $latitudeColumn = 'latitude';
-    protected string $longitudeColumn = 'longitude';
-    protected ?string $jsonColumn = null;
-
-    protected float $latitude;
-    protected float $longitude;
     protected bool $isDraggable = false;
 
     // Configurações de Ícone
@@ -29,8 +21,8 @@ class Marker extends BaseLayer
 
     final public function __construct(float $latitude = 0, float $longitude = 0)
     {
-        $this->latitude = $latitude;
-        $this->longitude = $longitude;
+        $this->layerState['lat'] = $latitude;
+        $this->layerState['lng'] = $longitude;
     }
 
     /**
@@ -39,7 +31,7 @@ class Marker extends BaseLayer
      * @param float $longitude The longitude for the marker.
      * @return static A new Marker instance with the specified coordinates.
      */
-    public static function make(float $latitude, float $longitude): static
+    public static function make(float $latitude = 0, float $longitude = 0): static
     {
         return new static($latitude, $longitude);
     }
@@ -47,67 +39,44 @@ class Marker extends BaseLayer
     /**
      * Create a Marker instance from an Eloquent record.
      * @param Model $record The Eloquent model record to create the marker from.
-     * @param string $latColumn The column name for latitude (default: 'latitude').
-     * @param string $lngColumn The column name for longitude (default: 'longitude').
-     * @param string|null $jsonColumn Optional column name if coordinates are stored as JSON.
-     * @param string|null $titleColumn Optional column name for marker title (default: 'title').
-     * @param string|null $descriptionColumn Optional column name for marker description (default: 'description').
-     * @param array|null $popupFieldsColumns Optional array of column names to include in popup (default: all except id, lat, lng, title, description, timestamps).
+     * @param string|null $coordsColumn Optional column name for coordinates attribute.
+     * @param string|null $titleColumn Optional column name for marker title.
+     * @param string|null $descriptionColumn Optional column name for marker description.
+     * @param array|null $popupFieldsColumns Optional array of column names to include in popup.
      * @param string|array|null $color Optional marker color.
-     * @param bool $syncRecord Whether to sync changes back to the record when the marker is dragged on the map (default: true).
+     * @param bool|null $syncRecord Whether to sync changes back to the record when the marker is dragged on the map.
      * @param string|Closure|null $iconUrl Optional URL or Closure to determine the marker's icon URL.
      * @param Closure|null $mapRecordCallback Optional Closure to further customize the marker based on the record.
      * @return static A new Marker instance configured based on the provided record.
      */
     public static function fromRecord(
         Model $record,
-        string $latColumn = 'latitude',
-        string $lngColumn = 'longitude',
-        ?string $jsonColumn = null,
-        ?string $titleColumn = 'title',
-        ?string $descriptionColumn = 'description',
+        ?string $coordsColumn = null,
+        ?string $titleColumn = null,
+        ?string $descriptionColumn = null,
         ?array $popupFieldsColumns = null,
         string|array|null $color = null,
-        bool $syncRecord = true,
+        ?bool $syncRecord = null,
         ?string $iconUrl = null,
         ?Closure $mapRecordCallback = null
     ): static {
-        $lat = 0;
-        $lng = 0;
+        $coordsColumn ??= config('filament-leaflet.columns.coords');
+        $coords = $record->getAttribute($coordsColumn) ?? throw new \Exception("The specified coordinates column '{$coordsColumn}' does not exist on the record.");
 
-        if ($jsonColumn) {
-            $coords = $record->{$jsonColumn};
-            $coords = is_string($coords) ? json_decode($coords, true) : $coords;
-
-            $lat = $coords[$latColumn] ?? 0;
-            $lng = $coords[$lngColumn] ?? 0;
-        } else {
-            $lat = $record->{$latColumn} ?? 0;
-            $lng = $record->{$lngColumn} ?? 0;
-        }
-
-        $marker = new static($lat, $lng);
-        $marker->latitudeColumn = $latColumn;
-        $marker->longitudeColumn = $lngColumn;
-        $marker->jsonColumn = $jsonColumn;
-
-        return $marker
-            ->record($record, $syncRecord)
-            ->title($record->{$titleColumn} ?? null)
-            ->popupContent($record->{$descriptionColumn} ?? null)
-            ->popupFields(is_array($popupFieldsColumns) ? $record->only($popupFieldsColumns) : $record->except([
-                'id',
-                $latColumn,
-                $lngColumn,
-                $jsonColumn,
-                $titleColumn,
-                $descriptionColumn,
-                'created_at',
-                'updated_at',
-            ]))
-            ->color($color)
-            ->icon($iconUrl)
-            ->mapRecordUsing($mapRecordCallback);
+        return static::makeFromRecord(
+            record: $record,
+            instanceParameters: $coords->toFlatArray(),
+            recordColumns: [
+                'coords' => $coordsColumn,
+                'title' => $titleColumn,
+                'description' => $descriptionColumn,
+            ],
+            syncAttributes: $syncRecord,
+            jsonColumn: $coordsColumn,
+            popupFieldsColumns: $popupFieldsColumns,
+            color: $color,
+            mapRecordCallback: $mapRecordCallback,
+        )->icon($iconUrl);
     }
 
     /*
@@ -124,21 +93,13 @@ class Marker extends BaseLayer
     protected function getLayerData(): array
     {
         return [
-            'coords'    => [$this->latitude, $this->longitude],
+            'coords' => [
+                $this->layerState['lat'] ?? 0,
+                $this->layerState['lng'] ?? 0
+            ],
             'icon'      => $this->getIconOptions(),
             'draggable' => $this->isDraggable,
         ];
-    }
-
-    /**
-     * Check if the marker's coordinates are valid.
-     * @return bool True if the coordinates are valid, false otherwise.
-     * A marker is considered valid if its latitude is between -90 and 90, and its longitude is between -180 and 180.
-     */
-    public function isValid(): bool
-    {
-        return $this->latitude >= -90 && $this->latitude <= 90 &&
-            $this->longitude >= -180 && $this->longitude <= 180;
     }
 
     /*
@@ -191,7 +152,6 @@ class Marker extends BaseLayer
 
     /**
      * Convenience method to set both icon URL and size at once.
-     * @param string|Closure|null $url The URL of the icon or a Closure that returns the URL.
      * @param Closure|array $size An array with width and height or a Closure that returns such an array.
      * @return $this
      */
@@ -245,9 +205,12 @@ class Marker extends BaseLayer
     |--------------------------------------------------------------------------
     */
 
-    protected function getLayerCoordinates(): array
+    protected function getCoordinates(): Coordinate
     {
-        return [$this->latitude, $this->longitude];
+        return new Coordinate(
+            $this->layerState['lat'] ?? 0,
+            $this->layerState['lng'] ?? 0
+        );
     }
 
     /**
@@ -257,42 +220,6 @@ class Marker extends BaseLayer
      */
     public function distanceTo(Marker $target): float
     {
-        $earthRadius = 6371;
-
-        $latFrom = deg2rad($this->latitude);
-        $lonFrom = deg2rad($this->longitude);
-        $latTo = deg2rad($target->latitude);
-        $lonTo = deg2rad($target->longitude);
-
-        $latDiff = $latTo - $latFrom;
-        $lonDiff = $lonTo - $lonFrom;
-
-        $a = sin($latDiff / 2) * sin($latDiff / 2) +
-            cos($latFrom) * cos($latTo) *
-            sin($lonDiff / 2) * sin($lonDiff / 2);
-
-        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
-
-        return $earthRadius * $c;
-    }
-
-    protected function updateLayerData(array $data): void
-    {
-        $this->latitude = $data['lat'] ?? $this->latitude;
-        $this->longitude = $data['lng'] ?? $this->longitude;
-    }
-
-    protected function getMappedRecordAttributes(): array
-    {
-        $data = [
-            $this->latitudeColumn => $this->latitude,
-            $this->longitudeColumn => $this->longitude,
-        ];
-
-        if ($this->jsonColumn) {
-            return [$this->jsonColumn => $data];
-        }
-
-        return $data;
+        return $this->getLayerCoordinates()->distanceTo($target->getLayerCoordinates());
     }
 }

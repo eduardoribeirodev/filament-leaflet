@@ -4,7 +4,8 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Support;
 
 use Closure;
 use DateTime;
-use EduardoRibeiroDev\FilamentLeaflet\DTO\Coordinate;
+use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasColor;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Filament\Support\Concerns\EvaluatesClosures;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
@@ -19,6 +20,7 @@ abstract class BaseLayer implements Arrayable, Jsonable
     use Conditionable;
     use Macroable;
     use EvaluatesClosures;
+    use HasColor;
 
     protected ?string $id = null;
     protected null|string|BaseLayerGroup $group = null;
@@ -39,6 +41,10 @@ abstract class BaseLayer implements Arrayable, Jsonable
     protected ?Model $record = null;
     protected bool $syncRecordAttributes = true;
     protected ?string $recordJsonColumn = null;
+    /** @var array Mapeia os valores do estado do layer para sincronização ($key => $value) */
+    protected array $layerState = [];
+    /** @var array Mapeia as colunas do registro para sincronização ($key => $column) */
+    protected array $recordColumns = [];
 
     public function __construct(?string $id = null)
     {
@@ -62,24 +68,22 @@ abstract class BaseLayer implements Arrayable, Jsonable
     abstract protected function getLayerData(): array;
 
     /**
-     * Valida se o layer está configurado corretamente
+     * Método de fábrica para criar uma instância do layer. Os parâmetros podem variar dependendo do tipo de layer (por exemplo, um marker pode precisar de latitude e longitude, enquanto um polígono pode precisar de um array de coordenadas).
      */
-    abstract public function isValid(): bool;
+    abstract public static function make(): static;
 
     /**
-     * Retorna as coordenadas do centro do layer [latitude, longitude]
+     * Método de fábrica para criar uma instância do layer a partir de um registro Eloquent.
      */
-    abstract protected function getLayerCoordinates(): array;
+    abstract static function fromRecord(Model $record): static;
 
     /**
-     * Atualiza os dados do layer com base nos dados recebidos do frontend
+     * Get the coordinates of the layer for centering the map. This method should return a Coordinate object representing the central point of the layer, which can be used to center the map view when the layer is added or interacted with. The implementation of this method will depend on the specific type of layer (e.g., a marker would return its own coordinates, while a polygon might return the centroid of its vertices).
+     * @return Coordinate A Coordinate object representing the central point of the layer.
+     * @example For a Marker layer, this method would return the marker's latitude and longitude as a Coordinate object. For a Polygon layer, it might calculate and return the centroid of the polygon's vertices as a Coordinate object.
+     * @see Coordinate class for more details on how to represent coordinates in the system.
      */
-    abstract protected function updateLayerData(array $data): void;
-
-    /**
-     * Relaciona os dados do layer com as colunas do model, se aplicável
-     */
-    abstract protected function getMappedRecordAttributes(): array;
+    abstract protected function getCoordinates(): Coordinate;
 
     /*
     |--------------------------------------------------------------------------
@@ -213,7 +217,7 @@ abstract class BaseLayer implements Arrayable, Jsonable
         $collectedFields = is_array($fields) ? collect($fields) : $fields;
 
         $mappedFields = $collectedFields->mapWithKeys(function ($value, $key) use ($dateFormat) {
-            $label = str($key)->replace(['-', '_'], ' ')->title()->toString();
+            $label = str($key)->kebab()->replace('-', ' ')->title()->toString();
             $content = $value instanceof DateTime ? $value->format($dateFormat) : $value;
 
             return [__($label) => __($content) ?: '--'];
@@ -350,13 +354,12 @@ abstract class BaseLayer implements Arrayable, Jsonable
     /**
      * Bind an Eloquent model record to the layer. This allows you to associate the layer with a specific database record, enabling features such as displaying record data in popups or tooltips, and synchronizing changes made to the layer back to the database. The $syncAttributes parameter determines whether changes to the layer's attributes should be automatically synchronized back to the associated record when the layer is updated.
      * @param Model $record The Eloquent model record to bind to the layer.
-     * @param bool $syncAttributes Whether to automatically synchronize changes to the layer's attributes back to the associated record when the layer is updated. If true, any updates to the layer will also update the corresponding attributes on the bound record. If false, changes to the layer will not affect the bound record.
      * @return $this
      */
-    public function record(Model $record, bool $syncAttributes = true): static
-    {
+    public function record(
+        Model $record,
+    ): static {
         $this->record = $record;
-        $this->syncRecordAttributes = $syncAttributes;
         return $this;
     }
 
@@ -373,6 +376,47 @@ abstract class BaseLayer implements Arrayable, Jsonable
     public function mapRecordUsing(?Closure $callback): static
     {
         return $this->evaluate($callback) ?? $this;
+    }
+
+    protected static function makeFromRecord(
+        Model $record,
+        array $instanceParameters,
+        array $recordColumns,
+        ?bool $syncAttributes,
+        ?string $jsonColumn,
+        ?array $popupFieldsColumns,
+        string|array|null $color,
+        ?Closure $mapRecordCallback,
+    ): static {
+        $recordColumns = collect($recordColumns)
+            ->map(fn($column, $key) => $column ?? config("filament-leaflet.columns.{$key}", $key))
+            ->toArray();
+
+        $except = array_filter([
+            ...array_values($recordColumns),
+            $jsonColumn,
+            'created_at',
+            'updated_at',
+            'id',
+        ]);
+
+        $popupFieldsColumns ??= array_keys($record->except($except));
+        $titleColumn = $recordColumns['title'] ?? null;
+        $descriptionColumn = $recordColumns['description'] ?? null;
+
+        $instance = new static(...$instanceParameters);
+
+        $instance->syncRecordAttributes = $syncAttributes ?? config('filament-leaflet.sync_record_attributes', true);
+        $instance->recordJsonColumn = $jsonColumn;
+        $instance->recordColumns = $recordColumns;
+
+        return $instance
+            ->record($record)
+            ->title($record->getAttribute($titleColumn) ?? null)
+            ->popupContent($record->getAttribute($descriptionColumn) ?? null)
+            ->popupFields($record->only($popupFieldsColumns))
+            ->color($color)
+            ->mapRecordUsing($mapRecordCallback);
     }
 
     /**
@@ -454,11 +498,6 @@ abstract class BaseLayer implements Arrayable, Jsonable
         return $this->group;
     }
 
-    public function getCoordinates(): Coordinate
-    {
-        return Coordinate::from($this->getLayerCoordinates());
-    }
-
     /**
      * Set whether the layer is editable. The $editable parameter can be a boolean or a Closure that returns a boolean. If a Closure is provided, it will be evaluated to determine whether the layer should be editable or not.
      * @param Closure|bool $editable A boolean value or a Closure that returns a boolean indicating whether the layer should be editable or not. If true, the layer will be editable. If false, the layer will not be editable. If a Closure is provided, it will be evaluated to determine whether the layer should be editable or not.
@@ -504,16 +543,16 @@ abstract class BaseLayer implements Arrayable, Jsonable
 
     public final function updateLayer(array $data): void
     {
-        $this->updateLayerData($data);
+        $this->layerState = $data;
 
-        if ($this->record && $this->syncRecordAttributes) {
-            $attributes = $this->getMappedRecordAttributes();
+        if ($this->syncRecordAttributes && $this->record) {
+            $attributes = collect($this->layerState)
+                ->mapWithKeys(fn($value, $key) => [$this->recordColumns[$key] ?? $key => $value])
+                ->toArray();
 
-            $this->record->update(
-                $this->recordJsonColumn
-                    ? [$this->recordJsonColumn => $attributes]
-                    : $attributes
-            );
+            $this->record->update($this->recordJsonColumn
+                ? [$this->recordJsonColumn => $attributes]
+                : $attributes);
         }
     }
 

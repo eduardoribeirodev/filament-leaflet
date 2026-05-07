@@ -6,13 +6,14 @@ use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayerGroup;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\LayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Shape;
 use Livewire\Attributes\On;
 
 trait HasMapConfig
 {
     // Configurações padrão do mapa
-    protected array $mapCenter = [-14.235, -51.9253]; // Centro do Brasil
+    protected ?array $mapCenter = null;
     protected bool $autoCenter = false;
     protected int $defaultZoom = 4;
     protected int $mapHeight = 598;
@@ -40,13 +41,10 @@ trait HasMapConfig
     protected bool $hasRemoveLayersControl = false;
     protected bool $hasRotateLayersControl = false;
     protected bool $hasCutPolygonControl = false;
-    /** @deprecated */
-    protected bool $hasDrawControl = false;
 
     protected int $maxZoom = 19;
     protected int $minZoom = 2;
 
-    /** @var TileLayer|string|array */
     protected TileLayer|string|array $tileLayersUrl = TileLayer::OpenStreetMap;
 
     // Configurações do GeoJSON Density
@@ -69,7 +67,7 @@ trait HasMapConfig
      */
     protected function getMapCenter(): array
     {
-        return $this->mapCenter;
+        return $this->mapCenter ?? config('filament-leaflet.default_map_center', [0, 0]);
     }
 
     /**
@@ -150,15 +148,6 @@ trait HasMapConfig
     protected function hasZoomControl(): bool
     {
         return $this->hasZoomControl;
-    }
-
-    /**
-     * @deprecated Use os métodos específicos de controle de desenho.
-     * Define se o controle de desenho deve ser exibido.
-     */
-    protected function hasDrawControl(): bool
-    {
-        return $this->hasDrawControl;
     }
 
     /**
@@ -319,10 +308,6 @@ trait HasMapConfig
      */
     protected final function getDrawControls(): array
     {
-        if ($this->hasDrawControl()) {
-            return []; // habilita todos os controles individuais
-        }
-
         return [
             'drawMarker'       => $this->hasDrawMarkerControl(),
             'drawCircleMarker' => $this->hasDrawCircleMarkerControl(),
@@ -539,7 +524,6 @@ trait HasMapConfig
     private function preparedLayers(): array
     {
         return collect($this->getCachedLayers())
-            ->filter(fn(BaseLayer $layer) => $layer->isValid())
             ->values()
             ->toArray();
     }

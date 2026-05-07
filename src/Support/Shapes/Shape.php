@@ -2,13 +2,14 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
 
-use Closure;
+use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasFillColor;
 use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasPath;
 
 abstract class Shape extends BaseLayer
 {
     use HasPath;
+    use HasFillColor;
 
     /**
      * Retorna os dados específicos da forma.

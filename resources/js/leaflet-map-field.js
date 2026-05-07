@@ -11,7 +11,6 @@ document.addEventListener('livewire:init', () => {
 
             init() {
                 this.mapCore = new LeafletMapCore(this.config);
-                this.state = this.getState();
                 this.mapCore.init();
                 this.setupEventHandlers();
                 this.updatePickMarker();
@@ -23,13 +22,7 @@ document.addEventListener('livewire:init', () => {
              */
             getState() {
                 if (!this.config.state) return undefined;
-
-                const state = this.$wire.get(this.config.state.statePath);
-                if (!state) return undefined;
-                return {
-                    lat: state[this.config.state.latitudeFieldName],
-                    lng: state[this.config.state.longitudeFieldName]
-                }
+                return this.$wire.get(this.config.state.statePath);
             },
 
             /**
@@ -38,11 +31,7 @@ document.addEventListener('livewire:init', () => {
             setState(lat, lng) {
                 if (!this.config.state) return;
                 
-                this.$wire.set(this.config.state.statePath, {
-                    [this.config.state.latitudeFieldName]: lat,
-                    [this.config.state.longitudeFieldName]: lng
-                });
-
+                this.$wire.set(this.config.state.statePath, {lat, lng});
                 this.updatePickMarker();
             },
 
@@ -70,7 +59,7 @@ document.addEventListener('livewire:init', () => {
                 if (!coords) return;
 
                 let markerOptions = this.config.state.pickMarker;
-                markerOptions.coords = Object.values(coords);
+                markerOptions.coords = [coords.lat, coords.lng];
 
                 this.pickMarker = this.mapCore.createMarker(markerOptions);
 

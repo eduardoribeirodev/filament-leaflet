@@ -16,6 +16,7 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('filament-leaflet')
+            ->hasConfigFile('filament-leaflet')
             ->hasViews();
     }
 
@@ -26,6 +27,14 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
         $this->publishes([
             __DIR__ . '/../resources/lang' => $this->app->langPath('/vendor/filament-leaflet'),
         ], 'filament-leaflet-translations');
+
+        $this->publishes([
+            __DIR__ . '/../resources/views' => resource_path('views/vendor/filament-leaflet'),
+        ], 'filament-leaflet-views');
+
+        $this->publishes([
+            __DIR__ . '/../config/filament-leaflet.php' => config_path('filament-leaflet.php'),
+        ], 'filament-leaflet-config');
 
         FilamentAsset::registerScriptData([
             'translations' => Lang::get('filament-leaflet::filament-leaflet'),

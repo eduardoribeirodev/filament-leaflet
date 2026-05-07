@@ -188,7 +188,12 @@ export class LeafletMapCore {
 
         if (!layer) return;
 
-        Alpine.raw(this.map).removeLayer(Alpine.raw(layer.layer));
+        if (layer.layer.options.group) {
+            const group = this.layerGroups.get(layer.layer.options.group);
+            Alpine.raw(group.layer).removeLayer(Alpine.raw(layer.layer));
+        } else {
+            Alpine.raw(this.map).removeLayer(Alpine.raw(layer.layer));
+        }
     }
 
     addLayer(layerData) {
@@ -257,15 +262,13 @@ export class LeafletMapCore {
         const updateHandler = (e) => {
             if (this.callbacks.onLayerUpdated) {
                 const target = e.target;
-                console.log(target);
                 let data = {};
 
                 if (target instanceof L.Marker) {
                     data = target.getLatLng();
                 } else if (target instanceof L.Circle || target instanceof L.CircleMarker) {
                     data = {
-                        lat: target.getLatLng().lat,
-                        lng: target.getLatLng().lng,
+                        ...target.getLatLng(),
                         radius: target.getRadius(),
                     };
                 } else if (target instanceof L.Rectangle) {
@@ -327,7 +330,6 @@ export class LeafletMapCore {
         groupsData.forEach(layerGroupData => {
             let layerGroup = null;
 
-            layerGroupData.options = { pmIgnore: true };
             switch (layerGroupData.type) {
                 case 'group':
                     layerGroup = L.layerGroup(layerGroupData.options);

@@ -15,11 +15,11 @@ abstract class BaseLayerGroup implements Arrayable, Jsonable
     use EvaluatesClosures;
 
     protected ?string $id = null;
-    protected ?array $layers = null;
+    protected array $layers = [];
     protected ?string $name = null;
     protected ?bool $isEditable = null;
 
-    public function __construct(?array $layers = null, ?string $id = null, ?string $name = null)
+    public function __construct(array $layers = [], ?string $id = null, ?string $name = null)
     {
         $this->layers = $layers;
         $this->id = $id;
@@ -31,7 +31,7 @@ abstract class BaseLayerGroup implements Arrayable, Jsonable
      * @param array<BaseLayer>|null $layers An array of BaseLayer instances to be included in the group. This parameter is optional, and if not provided, the group will be initialized without any layers.
      * @return static A new instance of a class that extends BaseLayerGroup, initialized with the specified layers.
      */
-    public static function make(?array $layers = null): static
+    public static function make(array $layers = []): static
     {
         return new static($layers);
     }
@@ -133,14 +133,20 @@ abstract class BaseLayerGroup implements Arrayable, Jsonable
     |--------------------------------------------------------------------------
     */
 
+    protected function getLayerGroupOptions(): array
+    {
+        return [];
+    }
+
     /**
      * Retorna os dados específicos do layer para serialização
      */
     protected function getLayerGroupData(): array
     {
         return [
-            'type' => $this->getType(),
-            'name' => $this->getName(),
+            'type'    => $this->getType(),
+            'name'    => $this->getName(),
+            'options' => $this->getLayerGroupOptions()
         ];
     }
 
@@ -179,7 +185,7 @@ abstract class BaseLayerGroup implements Arrayable, Jsonable
      */
     public function count(): int
     {
-        return count($this->layers ?? []);
+        return count($this->layers);
     }
 
     /**

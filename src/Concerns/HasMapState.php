@@ -3,9 +3,10 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Concerns;
 
 use Closure;
-use EduardoRibeiroDev\FilamentLeaflet\DTO\Coordinate;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Shape;
 use Filament\Support\Components\Attributes\ExposedLivewireMethod;
 
 trait HasMapState
@@ -14,6 +15,7 @@ trait HasMapState
         getGeoJsonTooltip as getParentGeoJsonTooltip;
         getGeoJsonUrl as getParentGeoJsonUrl;
         getMapData as getParentMapData;
+        getMapCenter as getParentMapCenter;
     }
 
     protected array $geoJsonData = [];
@@ -21,13 +23,11 @@ trait HasMapState
     protected array $markers = [];
     protected array $shapes = [];
 
-    protected ?string $latitudeFieldName = 'latitude';
-    protected ?string $longitudeFieldName = 'longitude';
-    protected bool $storeAsJson = false;
-
     protected ?Marker $pickMarker = null;
     protected ?Closure $onMapClickCallback = null;
     protected ?Closure $onLayerClickCallback = null;
+
+
 
     /**
      * Set the center of the map. The center can be defined using either a single parameter that is an array of [latitude, longitude] or by providing latitude and longitude as separate parameters. The method will evaluate the provided parameters, allowing for dynamic values using Closures. If the center is set using separate latitude and longitude parameters, both must be provided; otherwise, an exception will be thrown.
@@ -202,14 +202,6 @@ trait HasMapState
         return $this;
     }
 
-    /** @deprecated */
-    public function drawControl(bool|Closure $enabled = true): static
-    {
-        $this->hasDrawControl = $this->evaluate($enabled);
-
-        return $this;
-    }
-
     /**
      * Set whether the map has a draw marker control. The $enabled parameter is a boolean value or a Closure that returns a boolean indicating whether the draw marker control should be displayed on the map. When set to true, the draw marker control will be visible, allowing users to add markers to the map by clicking on it. If set to false, the draw marker control will be hidden, which can be useful for cleaner map designs or when drawing functionality is not desired.
      * @param bool|Closure $enabled A boolean value or a Closure that returns a boolean indicating whether the draw marker control should be displayed on the map. If true, the draw marker control will be visible. If false, it will be hidden.
@@ -322,7 +314,6 @@ trait HasMapState
      * Set whether the map has a remove layers control. The $enabled parameter is a boolean value or a Closure that returns a boolean indicating whether the remove layers control should be displayed on the map. When set to true, the remove layers control will be visible, allowing users to remove layers from the map. If set to false, the remove layers control will be hidden.
      * @param bool|Closure $enabled A boolean value or a Closure that returns a boolean indicating whether the remove layers control should be displayed on the map. If true, the remove layers control will be visible. If false, it will be hidden.
      * @return $this The current instance of the class using this trait, allowing for method chaining.
-     * @deprecated This method is deprecated and may be removed in future versions. Please use alternative methods for layer management.
      */
     public function removeLayersControl(bool|Closure $enabled = true): static
     {
@@ -395,7 +386,6 @@ trait HasMapState
      * Set the GeoJSON URL for the map. The $url parameter can be a string URL or a Closure that returns a string URL pointing to a GeoJSON file. This method allows you to specify the source of GeoJSON data that will be used to render features on the map, such as markers, shapes, and tooltips.
      * @param string|Closure $url A string URL or a Closure that returns a string URL pointing to a GeoJSON file.
      * @return $this The current instance of the class using this trait, allowing for method chaining.
-     * @deprecated This method is deprecated. Please use geoJsonData() instead to provide GeoJSON data directly.
      */
     public function geoJsonUrl(string|Closure $url): static
     {
@@ -465,42 +455,6 @@ trait HasMapState
     }
 
     /**
-     * Set the record's latitude column name. The $name parameter can be a string representing the column name or a Closure that returns such a string. This method allows you to specify which column in your data record should be used for the latitude value when rendering the map.
-     * @param string|Closure|null $name A string representing the column name or a Closure that returns such a string.
-     * @return $this The current instance of the class using this trait, allowing for method chaining.
-     */
-    public function latitudeFieldName(string|Closure|null $name): static
-    {
-        $this->latitudeFieldName = $this->evaluate($name);
-
-        return $this;
-    }
-
-    /**
-     * Set the record's longitude column name. The $name parameter can be a string representing the column name or a Closure that returns such a string. This method allows you to specify which column in your data record should be used for the longitude value when rendering the map.
-     * @param string|Closure|null $name A string representing the column name or a Closure that returns such a string.
-     * @return $this The current instance of the class using this trait, allowing for method chaining.
-     */
-    public function longitudeFieldName(string|Closure|null $name): static
-    {
-        $this->longitudeFieldName = $this->evaluate($name);
-
-        return $this;
-    }
-
-    /**
-     * Set whether to store the map state as JSON. The $value parameter is a boolean value or a Closure that returns a boolean indicating whether the map state should be stored as JSON. When set to true, the map state will be stored in JSON format, which can be useful for complex state data or when integrating with JavaScript libraries that expect JSON input. If set to false, the map state will be stored in its default format.
-     * @param bool|Closure $value A boolean value or a Closure that returns a boolean indicating whether the map state should be stored as JSON. If true, the map state will be stored in JSON format. If false, it will be stored in its default format.
-     * @return $this The current instance of the class using this trait, allowing for method chaining.
-     */
-    public function storeAsJson(bool|Closure $value = true): static
-    {
-        $this->storeAsJson = $this->evaluate($value);
-
-        return $this;
-    }
-
-    /**
      * Set the marker to be picked on the map. The $marker parameter can be a Marker instance or a Closure that returns a Marker instance. This method allows you to define which marker should be picked on the map, providing a way to select and highlight specific markers.
      * @param Marker|Closure|null $marker A Marker instance or a Closure that returns a Marker instance.
      * @return $this The current instance of the class using this trait, allowing for method chaining.
@@ -562,12 +516,16 @@ trait HasMapState
         $state = $this->getState();
 
         if (!$state) {
-            return $this->mapCenter;
+            return $this->getParentMapCenter();
+        }
+
+        if (is_array($state)) {
+            $state = Coordinate::fromArray($state);
         }
 
         return [
-            $state[$this->latitudeFieldName] + 0.5 ** ($this->getDefaultZoom() - 4),
-            $state[$this->longitudeFieldName]
+            'lat' => $state->lat + 0.5 ** ($this->getDefaultZoom() - 4),
+            'lng' => $state->lng
         ];
     }
 
@@ -624,46 +582,24 @@ trait HasMapState
         ]);
     }
 
-    public function getStatePath(bool $isAbsolute = true): ?string
-    {
-        if (method_exists(parent::class, 'getStatePath')) {
-            return parent::getStatePath($isAbsolute);
-        }
-
-        return null;
-    }
-
-    public function getKey(bool $isAbsolute = true): ?string
-    {
-        if (method_exists(parent::class, 'getKey')) {
-            return parent::getKey($isAbsolute);
-        }
-
-        return null;
-    }
-
-    public function getRecordKey(): ?string
-    {
-        if (($record = $this->getRecord())) {
-            return $record->getKey();
-        }
-
-        return null;
-    }
-
     private function getMapFieldData(): array
     {
         return [
             'pickMarker'         => $this->getPickMarkerData(),
-            'latitudeFieldName'  => $this->latitudeFieldName,
-            'longitudeFieldName' => $this->longitudeFieldName,
-            'statePath'          => $this->getStatePath(),
             'state'              => $this->getState(),
             'name'               => $this->getName(),
-            'recordKey'          => $this->getRecordKey(),
             'disabled'           => $this->isDisabled(),
-            'key'                => $this->getKey(),
+            'statePath'          => $this->getMethodIfExists('getStatePath'),
+            'recordKey'          => $this->getMethodIfExists('getRecordKey'),
+            'key'                => $this->getMethodIfExists('getKey'),
         ];
+    }
+
+    private function getMethodIfExists(string $method)
+    {
+        return method_exists($this, $method)
+            ? $this->{$method}()
+            : null;
     }
 
     public function getMapData(): array

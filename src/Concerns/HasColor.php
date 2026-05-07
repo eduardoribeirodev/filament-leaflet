@@ -3,8 +3,7 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Concerns;
 
 use Closure;
-use EduardoRibeiroDev\FilamentLeaflet\Enums\Color;
-use Filament\Support\Colors\Color as FilamentColor;
+use Filament\Support\Colors\Color;
 
 trait HasColor
 {
@@ -43,7 +42,6 @@ trait HasColor
     /**
      * Set the color of the layer to red. This method is a convenience method that allows you to quickly set the color of the layer to red without having to specify the color as a string or using the Color enum directly. It internally calls the color() method with the appropriate value for red, making it easier and more intuitive to set common colors for your map layers.
      * @return static The current instance with the color property set to red.
-     * @example $layer->red(); // Sets the color to red using the convenience method.
      */
     public function red(): static
     {
@@ -98,11 +96,10 @@ trait HasColor
     /**
      * Set the color of the layer to black. This method is a convenience method that allows you to quickly set the color of the layer to black without having to specify the color as a string or using the Color enum directly. It internally calls the color() method with the appropriate value for black, making it easier and more intuitive to set common colors for your map layers.
      * @return static The current instance with the color property set to black.
-     * @example $layer->black(); // Sets the color to black using the convenience method.
      */
     public function black(): static
     {
-        return $this->color(Color::Black);
+        return $this->color('#000000');
     }
 
     /**
@@ -111,7 +108,7 @@ trait HasColor
      */
     public function gold(): static
     {
-        return $this->color(Color::Gold);
+        return $this->color('#FFD700');
     }
 
     /**
@@ -159,7 +156,7 @@ trait HasColor
                 : array_first($color);
         }
 
-        return FilamentColor::convertToRgb($color);
+        return Color::convertToRgb($color);
     }
 
     public function getDefaultColor(): string|array

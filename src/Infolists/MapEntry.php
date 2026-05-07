@@ -15,24 +15,6 @@ class MapEntry extends Entry
         parent::setUp();
         $this->height(284);
         $this->recenterTimeout(5000);
-        $this->state(function ($record) {
-            if (!$record) return null;
-
-            if ($this->storeAsJson) {
-                return $record->{$this->getName()};
-            }
-
-            if (
-                ($latitude = $record->{$this->latitudeFieldName} ?? null) &&
-                ($longitude = $record->{$this->longitudeFieldName} ?? null)
-            ) {
-                return [
-                    $this->latitudeFieldName => $latitude,
-                    $this->longitudeFieldName => $longitude
-                ];
-            }
-
-            return null;
-        });
+        $this->state(fn($record, $component) => $record?->getAttribute($component->getName()));
     }
 }

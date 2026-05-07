@@ -3,20 +3,17 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
 
 use Closure;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Illuminate\Database\Eloquent\Model;
 
 class Polygon extends Shape
 {
-    protected array $points = [];
-    protected string $pointsColumn = 'points';
-    protected ?string $jsonColumn = null;
-
     /**
      * @param array $points Array de coordenadas ex: [[-15.0, -50.0], [-15.1, -50.1], ...]
      */
     final public function __construct(array ...$points)
     {
-        $this->points = $points;
+        $this->layerState['points'] = $points;
     }
 
     /**
@@ -32,51 +29,41 @@ class Polygon extends Shape
     /**
      * Create a Polygon instance from an Eloquent record. The method will attempt to extract the polygon points from the specified $pointsColumn, which can be a JSON string or an array. It will also set the title, description, popup fields, and color based on the provided parameters and the record's attributes.
      * @param Model $record The Eloquent model record to create the polygon from.
-     * @param string $pointsColumn The column name for the polygon points (default: 'points').
-     * @param string|null $titleColumn Optional column name for polygon title (default: 'title').
-     * @param string|null $descriptionColumn Optional column name for polygon description (default: 'description').
-     * @param array|null $popupFieldsColumns Optional array of column names to include in popup (default: all except id, pointsColumn, titleColumn, descriptionColumn, created_at, updated_at).
+     * @param string|null $pointsColumn The column name for the polygon points.
+     * @param string|null $titleColumn Optional column name for polygon title.
+     * @param string|null $descriptionColumn Optional column name for polygon description.
+     * @param array|null $popupFieldsColumns Optional array of column names to include in popup.
      * @param string|array|null $color Optional polygon color.
-     * @param bool $syncRecord Whether to sync changes back to the record when the shape is edited on the map (default: true).
+     * @param bool|null $syncRecord Whether to sync changes back to the record when the shape is edited on the map.
      * @param Closure|null $mapRecordCallback Optional Closure to further customize the polygon based on the record.
      * @return static A new Polygon instance configured based on the provided record.
      */
     public static function fromRecord(
         Model $record,
-        string $pointsColumn = 'points',
-        ?string $titleColumn = 'title',
-        ?string $descriptionColumn = 'description',
+        ?string $pointsColumn = null,
+        ?string $titleColumn = null,
+        ?string $descriptionColumn = null,
         ?array $popupFieldsColumns = null,
         string|array|null $color = null,
-        bool $syncRecord = true,
+        ?bool $syncRecord = null,
         ?Closure $mapRecordCallback = null
     ): static {
-        $points = [];
-
-        if ($record->hasAttribute($pointsColumn)) {
-            $value = $record->{$pointsColumn};
-            $points = is_string($value) ? json_decode($value, true) : $value;
-            $points = is_array($points) ? $points : [];
-        }
-
-        $polygon = new static($points);
-        $polygon->pointsColumn = $pointsColumn;
-        $polygon->jsonColumn = $pointsColumn;
-
-        return $polygon
-            ->record($record, $syncRecord)
-            ->title($record->{$titleColumn} ?? null)
-            ->popupContent($record->{$descriptionColumn} ?? null)
-            ->popupFields(is_array($popupFieldsColumns) ? $record->only($popupFieldsColumns) : $record->except([
-                'id',
-                $pointsColumn,
-                $titleColumn,
-                $descriptionColumn,
-                'created_at',
-                'updated_at',
-            ]))
-            ->color($color)
-            ->mapRecordUsing($mapRecordCallback);
+        $points = $record->{$pointsColumn} ?? [];
+        
+        return static::makeFromRecord(
+            record: $record,
+            instanceParameters: is_string($points) ? json_decode($points, true) : $points,
+            recordColumns: [
+                'points' => $pointsColumn,
+                'title' => $titleColumn,
+                'description' => $descriptionColumn,
+            ],
+            syncAttributes: $syncRecord,
+            jsonColumn: $pointsColumn,
+            popupFieldsColumns: $popupFieldsColumns,
+            color: $color,
+            mapRecordCallback: $mapRecordCallback,
+        );
     }
 
 
@@ -89,7 +76,7 @@ class Polygon extends Shape
      */
     public function addPoint(float $latitude, float $longitude): static
     {
-        $this->points[] = [$latitude, $longitude];
+        $this->layerState['points'][] = [$latitude, $longitude];
         return $this;
     }
 
@@ -101,53 +88,27 @@ class Polygon extends Shape
     protected function getShapeData(): array
     {
         return [
-            'points' => $this->points,
+            'points' => $this->layerState['points'] ?? [],
         ];
     }
 
-    public function isValid(): bool
+    protected function getCoordinates(): Coordinate
     {
-        // Um polígono precisa de pelo menos 3 pontos para fechar uma área
-        return count($this->points) >= 3;
-    }
-
-    protected function getLayerCoordinates(): array
-    {
-        if (empty($this->points)) {
-            return [0, 0];
+        if (empty($this->layerState['points'])) {
+            return new Coordinate(0, 0);
         }
 
         // Calcula o centroide do polígono
         $latSum = 0;
         $lngSum = 0;
-        foreach ($this->points as $point) {
+        foreach ($this->layerState['points'] as $point) {
             $latSum += $point[0];
             $lngSum += $point[1];
         }
 
-        return [
-            $latSum / count($this->points),
-            $lngSum / count($this->points),
-        ];
-    }
-
-    protected function updateLayerData(array $data): void
-    {
-        if (isset($data['points']) && is_array($data['points'])) {
-            $this->points = $data['points'];
-        }
-    }
-
-    protected function getMappedRecordAttributes(): array
-    {
-        $data = [
-            $this->pointsColumn => $this->points,
-        ];
-
-        if ($this->jsonColumn) {
-            return [$this->jsonColumn => $data];
-        }
-
-        return $data;
+        return new Coordinate(
+            $latSum / count($this->layerState['points']),
+            $lngSum / count($this->layerState['points']),
+        );
     }
 }

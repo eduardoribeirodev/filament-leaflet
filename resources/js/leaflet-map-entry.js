@@ -6,12 +6,10 @@ document.addEventListener('livewire:init', () => {
             mapCore: null,
             config,
             $wire,
-            state: undefined,
             pickMarker: null,
 
             init() {
                 this.mapCore = new LeafletMapCore(this.config);
-                this.state = this.getState();
                 this.mapCore.init();
                 this.setupEventHandlers();
                 this.setupPickMarker();
@@ -21,15 +19,8 @@ document.addEventListener('livewire:init', () => {
              * Get the current state from the field
              */
             getState() {
-                const state = this.config.state.state;
-                console.log(state);
-
-                if (!state) return undefined;
-
-                return {
-                    lat: state[this.config.state.latitudeFieldName],
-                    lng: state[this.config.state.longitudeFieldName]
-                }
+                if (!this.config.state) return undefined;
+                return this.config.state.state;
             },
 
             /**

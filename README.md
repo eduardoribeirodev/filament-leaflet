@@ -205,6 +205,34 @@ class MyMapWidget extends MapWidget
 }
 ```
 
+#### Configuration
+
+You can configure default values for the package in `config/filament-leaflet.php`:
+
+```php
+return [
+    
+    'columns' => [ // Default column names for model binding (can be overridden in fromRecord() methods)
+        'latitude' => 'lat',
+        'longitude' => 'lng',
+        'coords' => 'location',
+        'radius' => 'radius',
+        'title' => 'title',
+        'description' => 'description',
+        'bounds' => 'bounds',
+        'points' => 'points',
+    ],
+    'sync_record_attributes' => true, // Auto-sync changes back to models
+    'default_map_center' => [-14.235, -51.9253], // Default map center
+];
+```
+
+Publish the configuration file:
+
+```bash
+php artisan vendor:publish --tag=filament-leaflet-config
+```
+
 ![Widget With Custom Tile Layers Example](images/tile-layers.png)
 
 **Available providers:** `OpenStreetMap`, `GoogleStreets`, `GoogleSatellite`, `GoogleHybrid`, `GoogleTerrain`, `EsriWorldImagery`, `EsriWorldStreetMap`, `EsriNatGeo`, `CartoPositron`, `CartoDarkMatter`, `Mapbox`
@@ -278,21 +306,6 @@ MapPicker::make('location')
 ```
 
 ![Form Field Example](images/form-field.png)
-
-**Default behavior:** Updates form's `latitude` and `longitude` fields. Customize with:
-
-```php
-MapPicker::make('location')
-    ->latitudeFieldName('lat')
-    ->longitudeFieldName('lng')
-```
-
-**Store as JSON:** Keep coordinates in a single column:
-
-```php
-MapPicker::make('location')
-    ->storeAsJson()  // Stores: { "latitude": -23.5505, "longitude": -46.6333 }
-```
 
 **Load GeoJSON:** Automatically loads from models with `HasGeoJsonFile` trait or `getGeoJsonUrl()` method:
 
@@ -477,28 +490,34 @@ Marker::make(-23.5505, -46.6333)
 // Basic usage
 Marker::fromRecord(
     record: $store,
-    latColumn: 'latitude',
-    lngColumn: 'longitude',
+    coordsColumn: 'coordinates',  // Column/attribute with Coordinate value object
     titleColumn: 'name',
+    descriptionColumn: 'description',
     popupFieldsColumns: ['address', 'phone'],
     color: Color::Blue,
-);
-
-// With JSON coordinates
-Marker::fromRecord(
-    record: $store,
-    jsonColumn: 'coordinates',
-    latColumn: 'lat',
-    lngColumn: 'lng',
 );
 
 // With custom callback
 Marker::fromRecord(
     record: $store,
+    coordsColumn: 'coordinates',
     mapRecordCallback: function (Marker $marker, Model $record) {
         $marker->gold()->popupFields(['hours' => $record->hours]);
     }
 );
+```
+
+**Note:** The `coordsColumn` parameter expects a `Coordinate` value object. Configure your model like this:
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
+
+class Store extends Model
+{
+    protected $casts = [
+        'coordinates' => Coordinate::class,
+    ];
+}
 ```
 
 ### Layer Groups
@@ -614,14 +633,15 @@ Create clusters directly from Eloquent models with powerful customization:
 
 ```php
 use App\Models\Store;
+use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use Filament\Support\Colors\Color;
 
 protected function getMarkers(): array
 {
     return [
         MarkerCluster::fromModel(
             model: Store::class,
-            latColumn: 'latitude',
-            lngColumn: 'longitude',
+            coordsColumn: 'coordinates',  // Column/attribute with Coordinate value object
             titleColumn: 'name',
             descriptionColumn: 'description',
             popupFieldsColumns: ['address', 'phone'],
@@ -640,8 +660,7 @@ Filter and customize the query used to load markers:
 ```php
 MarkerCluster::fromModel(
     model: Store::class,
-    latColumn: 'latitude',
-    lngColumn: 'longitude',
+    coordsColumn: 'coordinates',
     modifyQueryCallback: function ($query) {
         return $query
             ->where('status', 'active')
@@ -850,30 +869,30 @@ protected function getShapes(): array
 }
 ```
 
-**Improved Support for JSON Columns:**
-
-Shapes now intelligently handle JSON-stored coordinates:
+**Configure Your Model:**
 
 ```php
-Circle::fromRecord(
-    record: $zone,
-    jsonColumn: 'center_coordinates',  // Stores: { "lat": -23.5505, "lng": -46.6333 }
-    latColumn: 'lat',                   // Keys within the JSON
-    lngColumn: 'lng',
-);
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
+
+class DeliveryZone extends Model
+{
+    protected $casts = [
+        'center_coordinates' => Coordinate::class,
+    ];
+}
 ```
 
 Each shape type supports the `fromRecord()` method with common parameters:
 - `record`: The Eloquent model instance
-- `latColumn`/`lngColumn`: Column names for coordinates (for Circle, CircleMarker)
+- `coordsColumn`: Column name for center coordinates (for Circle, CircleMarker) - expects a `Coordinate` value object
 - `radiusColumn`: Column name for radius (for Circle, CircleMarker)
-- `jsonColumn`: Column name for JSON coordinates (case of storing lat/lng as JSON)
 - `pointsColumn`: Column name for points array (for Polygon, Polyline)
 - `boundsColumn`: Column name for bounds array (for Rectangle)
 - `titleColumn`: Column name for the shape title
 - `descriptionColumn`: Column name for the popup content
 - `popupFieldsColumns`: Array of column names to include in popup
 - `color`: Default color for the shape
+- `syncRecord`: Whether to sync changes back to the record when edited (default: true from config)
 - `mapRecordCallback`: Closure to customize the shape based on the record
 
 ##### Circle from Record
@@ -881,8 +900,7 @@ Each shape type supports the `fromRecord()` method with common parameters:
 ```php
 Circle::fromRecord(
     record: $zone,
-    latColumn: 'center_lat',
-    lngColumn: 'center_lng',
+    coordsColumn: 'center',
     radiusColumn: 'coverage_radius_km',
     titleColumn: 'zone_name',
     descriptionColumn: 'zone_description',
@@ -1152,9 +1170,7 @@ use App\Models\Location;
 class LocationMapWidget extends MapWidget
 {
     protected ?string $markerModel = Location::class;
-    protected string $latitudeColumnName = 'latitude';
-    protected string $longitudeColumnName = 'longitude';
-    protected ?string $jsonCoordinatesColumnName = 'coordinates'; // For JSON storage
+    protected string $coordinatesColumnName = 'coordinates';
     
     protected function getFormComponents(): array
     {
@@ -1167,7 +1183,7 @@ class LocationMapWidget extends MapWidget
 }
 ```
 
-When users click the map, a form modal opens to create a new marker. If coordinates are stored as JSON, the widget automatically converts latitude/longitude into the configured JSON column.
+When users click the map, a form modal opens to create a new marker. The widget automatically converts latitude/longitude into the configured coordinates column.
 
 **Built-in Marker Actions:**
 
@@ -1179,8 +1195,7 @@ use App\Models\Store;
 class LocationMapWidget extends MapWidget
 {
     protected ?string $markerModel = Store::class;
-    protected string $latitudeColumnName = 'latitude';
-    protected string $longitudeColumnName = 'longitude';
+    protected string $coordinatesColumnName = 'coordinates';
     
     // Define the action to execute when a marker is clicked
     protected ?string $markerClickAction = 'view'; // 'view', 'edit', 'delete' or null
@@ -1190,8 +1205,7 @@ class LocationMapWidget extends MapWidget
         return Store::all()->map(fn($store) => 
             Marker::fromRecord(
                 record: $store,
-                latColumn: 'latitude',
-                lngColumn: 'longitude',
+                coordsColumn: 'coordinates',
                 titleColumn: 'name',
             )
         )->all();
@@ -1405,6 +1419,7 @@ public function getCustomScripts(): string
 | `$markerClickAction` | Define action for marker clicks (view/edit/delete) |
 | `$markerModel` | Eloquent model class for markers (enables CRUD) |
 | `$markerResource` | Optional Filament Resource for marker actions |
+| `$coordinatesColumnName` | Optional Column name for coordinates in CRUD (null uses config default) |
 
 #### MapPicker
 
@@ -1425,9 +1440,6 @@ public function getCustomScripts(): string
 | `geoJsonUrl($url)` | Set GeoJSON URL |
 | `geoJsonData($data)` | Set GeoJSON density data |
 | `geoJsonTooltip($tooltip)` | Set GeoJSON tooltip template |
-| `latitudeFieldName($name)` | Customize latitude field name |
-| `longitudeFieldName($name)` | Customize longitude field name |
-| `storeAsJson($bool)` | Store coordinates as JSON in single column |
 | `pickMarker($marker)` | Customize the temporary marker shown on click |
 | `onMapClick($callback)` | Handle map click events with closure callback |
 | `onLayerClick($callback)` | Handle layer click events with closure callback |
@@ -1453,9 +1465,6 @@ public function getCustomScripts(): string
 | `geoJsonUrl($url)` | Set GeoJSON URL |
 | `geoJsonData($data)` | Set GeoJSON density data |
 | `geoJsonTooltip($tooltip)` | Set GeoJSON tooltip template |
-| `latitudeFieldName($name)` | Customize latitude field name |
-| `longitudeFieldName($name)` | Customize longitude field name |
-| `storeAsJson($bool)` | Store coordinates as JSON in single column |
 | `pickMarker($marker)` | Customize the temporary marker shown on click |
 | `onMapClick($callback)` | Handle map click events with closure callback |
 | `onLayerClick($callback)` | Handle layer click events with closure callback |
@@ -1480,9 +1489,6 @@ public function getCustomScripts(): string
 | `geoJsonUrl($url)` | Set GeoJSON URL |
 | `geoJsonData($data)` | Set GeoJSON density data |
 | `geoJsonTooltip($tooltip)` | Set GeoJSON tooltip template |
-| `latitudeFieldName($name)` | Customize latitude field name |
-| `longitudeFieldName($name)` | Customize longitude field name |
-| `storeAsJson($bool)` | Store coordinates as JSON in single column |
 | `pickMarker($marker)` | Customize the temporary marker shown on click |
 | `onMapClick($callback)` | Handle map click events with closure callback |
 | `onLayerClick($callback)` | Handle layer click events with closure callback |
@@ -1633,6 +1639,128 @@ Available tile layer providers:
 - `TileLayer::CartoDarkMatter` - Carto Dark Matter map
 - `TileLayer::Mapbox` - Mapbox tiles (requires configured Access Token)
 
+## Value Objects Reference
+
+### Coordinate
+
+The `Coordinate` value object represents a geographical point with latitude and longitude coordinates. It's used throughout the package for storing and manipulating map coordinates.
+
+**Storage Modes:**
+
+The `Coordinate` cast supports two storage modes:
+
+1. **JSON Column** - Store coordinates as JSON in a single column
+2. **Virtual Attribute** - Manage separate latitude and longitude columns automatically
+
+**Usage in Models - JSON Column:**
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
+
+class Location extends Model
+{
+    protected $casts = [
+        'coordinates' => Coordinate::class,  // Stores as { "lat": -23.5505, "lng": -46.6333 }
+    ];
+}
+
+// Usage
+$location = Location::first();
+echo $location->coordinates->lat;  // -23.5505
+echo $location->coordinates->lng;  // -46.6333
+```
+
+**Usage in Models - Virtual Attribute (Separate Columns):**
+
+If you have separate `latitude` and `longitude` columns, use the cast with column parameters:
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
+
+class Store extends Model
+{
+    protected $casts = [
+        // Maps to latitude and longitude columns
+        'location' => Coordinate::class . ':latitude,longitude',
+    ];
+}
+
+// Your model has database columns: latitude, longitude
+// But you access them through a single 'location' virtual attribute
+$store = Store::first();
+echo $store->location->lat;   // Reads from 'latitude' column
+echo $store->location->lng;   // Reads from 'longitude' column
+
+// Setting coordinates updates both columns
+$store->location = new Coordinate(-23.5505, -46.6333);
+// Automatically saves to both latitude and longitude columns
+$store->save();
+```
+
+**Practical Example - Virtual Attribute:**
+
+```php
+// Migration
+Schema::create('stores', function (Blueprint $table) {
+    $table->id();
+    $table->string('name');
+    $table->decimal('latitude', 10, 8);      // Stores lat
+    $table->decimal('longitude', 11, 8);     // Stores lng
+    $table->timestamps();
+});
+
+// Model
+class Store extends Model
+{
+    protected $casts = [
+        'location' => Coordinate::class . ':latitude,longitude',
+    ];
+}
+
+// Usage
+$store = Store::create([
+    'name' => 'Main Store',
+    'location' => new Coordinate(-23.5505, -46.6333),
+]);
+
+// Database now has:
+// latitude: -23.5505
+// longitude: -46.6333
+
+// Access through virtual attribute
+echo $store->location->lat;  // -23.5505
+echo $store->location->lng;  // -46.6333
+```
+
+**Basic Usage:**
+
+```php
+// Create from array
+$coord = Coordinate::fromArray(['lat' => -23.5505, 'lng' => -46.6333]);
+
+// Convert to array
+$array = $coord->toArray();  // ['lat' => -23.5505, 'lng' => -46.6333]
+
+// Flat array for Leaflet
+$flat = $coord->toFlatArray();  // [-23.5505, -46.6333]
+
+// Calculate distance to another coordinate
+$distance = $coord->distanceTo(new Coordinate(-23.5515, -46.6343));  // In kilometers
+```
+
+**Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `__construct($lat, $lng)` | Create a new Coordinate instance |
+| `toArray()` | Convert to associative array with 'lat' and 'lng' keys |
+| `toFlatArray()` | Convert to flat array [$lat, $lng] |
+| `fromArray($array)` | Create from array with 'lat'/'lng' or numeric keys |
+| `fromObject($object)` | Create from object with lat/lng properties |
+| `from($coordinates)` | Universal factory method for arrays, objects, or Coordinate instances |
+| `distanceTo($other)` | Calculate distance to another Coordinate (in kilometers) |
+| `castUsing()` | Internal method for configuring Eloquent casting |
+
 ## Concern Methods Reference
 
 ### HasGeoJsonFile
@@ -1650,14 +1778,14 @@ These properties control core map behavior:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `$mapCenter` | array | [-14.235, -51.9253] | Initial map center [latitude, longitude] |
+| `$mapCenter` | array | null | Initial map center [latitude, longitude] (null uses config default) |
 | `$autoCenter` | bool | false | Auto-center to user's current location on load |
 | `$defaultZoom` | int | 4 | Initial zoom level |
-| `$mapHeight` | int | 504 | Map height in pixels |
+| `$mapHeight` | int | 598 | Map height in pixels |
 | `$mapDraggable` | bool | true | Allow users to pan by dragging |
 | `$mapZoomable` | bool | true | Allow users to zoom (scroll wheel, pinch) |
 | `$recenterMapTimeout` | ?int | null | Auto-recenter after X milliseconds of panning |
-| `$maxZoom` | int | 18 | Maximum zoom level allowed |
+| `$maxZoom` | int | 19 | Maximum zoom level allowed |
 | `$minZoom` | int | 2 | Minimum zoom level allowed |
 | `$hasDrawMarkerControl` | bool | false | Show draw marker control |
 | `$hasDrawCircleMarkerControl` | bool | false | Show draw circle marker toolbar |

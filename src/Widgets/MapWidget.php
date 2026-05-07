@@ -4,6 +4,7 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Widgets;
 
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasMapConfig;
 use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
@@ -38,9 +39,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     // Configurações dos marcadores
     protected ?string $markerModel = null;
     protected ?string $markerResource = null;
-    protected string $latitudeColumnName = 'latitude';
-    protected string $longitudeColumnName = 'longitude';
-    protected ?string $jsonCoordinatesColumnName = null;
+    protected ?string $coordinatesColumnName = null;
     protected int $formColumns = 2;
     protected ?string $markerClickAction = 'edit';
 
@@ -58,8 +57,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     {
         if ($this->markerModel) {
             $this->mountAction('createMarker', [
-                $this->getLatitudeColumnName() => $latitude,
-                $this->getLongitudeColumnName() => $longitude
+                $this->getCoordinatesColumnName() => new Coordinate($latitude, $longitude)
             ]);
         }
     }
@@ -124,27 +122,19 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     }
 
     /**
-     * Garante que o formulário possua os campos de coordenadas.
+     * Garante que o formulário possua o campo de coordenadas.
      */
     private function ensureFormHasCoordinateFields(Schema &$form): void
     {
-        $hasLat = $form->getComponent($this->getLatitudeColumnName());
-        $hasLng = $form->getComponent($this->getLongitudeColumnName());
+        $coordsColumn = $this->getCoordinatesColumnName();
+        $hasCoords = $form->getComponent($coordsColumn);
 
-        if ($hasLat && $hasLng) {
+        if ($hasCoords) {
             return;
         }
 
         $components = $form->getComponents();
-
-        if (!$hasLat) {
-            $components[] = Hidden::make($this->getLatitudeColumnName());
-        }
-
-        if (!$hasLng) {
-            $components[] = Hidden::make($this->getLongitudeColumnName());
-        }
-
+        $components[] = Hidden::make($coordsColumn);
         $form->schema($components);
     }
 
@@ -220,20 +210,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Se a configuração for para salvar em JSON, converte os campos planos para array
-        if ($this->shouldSaveCoordinatesAsJson()) {
-            $latCol = $this->getLatitudeColumnName();
-            $lngCol = $this->getLongitudeColumnName();
-            $jsonCol = $this->getJsonCoordinatesColumnName();
-
-            $data[$jsonCol] = [
-                $latCol => $data[$latCol],
-                $lngCol => $data[$lngCol]
-            ];
-
-            unset($data[$latCol], $data[$lngCol]);
-        }
-
+        // Coordinates are always saved to the single coordinates column
         return $data;
     }
 
@@ -259,24 +236,9 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
         return $this->formColumns;
     }
 
-    protected function shouldSaveCoordinatesAsJson(): bool
+    protected function getCoordinatesColumnName(): string
     {
-        return !is_null($this->getJsonCoordinatesColumnName());
-    }
-
-    protected function getLatitudeColumnName(): string
-    {
-        return $this->latitudeColumnName;
-    }
-
-    protected function getLongitudeColumnName(): string
-    {
-        return $this->longitudeColumnName;
-    }
-
-    protected function getJsonCoordinatesColumnName(): ?string
-    {
-        return $this->jsonCoordinatesColumnName;
+        return $this->coordinatesColumnName ?? config('filament-leaflet.columns.coords');
     }
 
     /**

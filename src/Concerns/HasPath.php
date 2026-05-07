@@ -6,9 +6,6 @@ use Closure;
 
 trait HasPath
 {
-    use HasColor;
-    use HasFillColor;
-    
     protected ?int $weight = null;
     protected ?float $smoothFactor = null;
     protected ?array $dashArray = null;
