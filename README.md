@@ -56,6 +56,7 @@ This will publish the Leaflet assets used by the package.
 - [Core Components](#core-components)
   - [Map Widget](#map-widget)
   - [MapPicker (Form Field)](#mappicker-form-field)
+  - [GeoSearchInput (Form Field)](#geosearchinput-form-field)
   - [MapColumn (Table Column)](#mapcolumn-table-column)
   - [MapEntry (Infolist)](#mapentry-infolist)
 - [Map Elements](#map-elements)
