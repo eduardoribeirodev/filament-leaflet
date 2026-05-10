@@ -355,59 +355,6 @@ MapPicker::make('location')
     ->recenterTimeout(fn($record) => $record->is_read_only ? 3000 : null)
 ```
 
-### MapColumn (Table Column)
-
-Display maps directly in Filament table columns:
-
-```php
-use EduardoRibeiroDev\FilamentLeaflet\Tables\MapColumn;
-use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
-
-MapColumn::make('location')
-    ->height(100)
-    ->zoom(8)
-    ->pickMarker(fn(Marker $marker) => $marker->black())
-    ->static()    // Disable interactions in table preview
-```
-
-![Table Column Example](images/table-column.png)
-
-Display circular maps for a unique visual style:
-
-```php
-MapColumn::make('location')
-    ->height(72)
-    ->zoom(5)
-    ->pickMarker(fn(Marker $marker) => $marker->iconSize([14, 25]))
-    ->circular()  // Optional: circular display
-```
-
-![Table Column Example](images/circular-table-column.png)
-
-### MapEntry (Infolist)
-
-Display read-only maps in Filament infolists:
-
-```php
-use EduardoRibeiroDev\FilamentLeaflet\Infolists\MapEntry;
-use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
-
-MapEntry::make('location')
-    ->height(284)
-    ->zoom(10)
-    ->pickMarker(fn(Marker $marker) => $marker->red())
-    ->static()    // Disable interactions (enabled by default)
-    ->columnSpanFull()
-```
-
-**Auto-recenter:** Maps automatically recenter after 3 seconds when users pan around. This provides a guided viewing experience while allowing temporary exploration:
-
-```php
-    ->recenterTimeout(5000)  // Recenter after 5 seconds (null to disable)
-```
-
-![Infolist Entry Example](images/infolist-entry.png)
-
 ### GeoSearchInput (Form Field)
 
 Search and select locations using multiple geocoding providers:
@@ -470,7 +417,7 @@ The field returns a `GeoSearchResult` object containing:
 use EduardoRibeiroDev\FilamentLeaflet\Fields\GeoSearchInput;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\GeoSearchResult;
 
-GeoSearchInput::make('location')->afterStateUpdated(function (callable $set, GeoSearchResult $result) {
+GeoSearchInput::make('location')->afterStateUpdated(function (callable $set, GeoSearchResult $state) {
     // Access the selected location's data
     $coordinate = $result->coordinate;  // Coordinate object with lat/lng
     $name = $result->name;              // Short name (e.g. "Eiffel Tower")
@@ -478,6 +425,7 @@ GeoSearchInput::make('location')->afterStateUpdated(function (callable $set, Geo
     $address = $result->address;        // Structured address data
     $type = $result->type;              // Location type (e.g. "tourism")
     $addresstype = $result->addresstype; // More specific type (e.g. "tourism", "shop", "amenity")
+
     // Example: Set a separate fields
     $set('full_address', $displayName);
     $set('city', $address->city);
@@ -502,6 +450,59 @@ $address->county;        // County name
 $address->postcode;      // Postal code
 $address->suburb;        // Suburb/neighborhood
 ```
+
+### MapColumn (Table Column)
+
+Display maps directly in Filament table columns:
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Tables\MapColumn;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
+
+MapColumn::make('location')
+    ->height(100)
+    ->zoom(8)
+    ->pickMarker(fn(Marker $marker) => $marker->black())
+    ->static()    // Disable interactions in table preview
+```
+
+![Table Column Example](images/table-column.png)
+
+Display circular maps for a unique visual style:
+
+```php
+MapColumn::make('location')
+    ->height(72)
+    ->zoom(5)
+    ->pickMarker(fn(Marker $marker) => $marker->iconSize([14, 25]))
+    ->circular()  // Optional: circular display
+```
+
+![Table Column Example](images/circular-table-column.png)
+
+### MapEntry (Infolist)
+
+Display read-only maps in Filament infolists:
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Infolists\MapEntry;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
+
+MapEntry::make('location')
+    ->height(284)
+    ->zoom(10)
+    ->pickMarker(fn(Marker $marker) => $marker->red())
+    ->static()    // Disable interactions (enabled by default)
+    ->columnSpanFull()
+```
+
+**Auto-recenter:** Maps automatically recenter after 3 seconds when users pan around. This provides a guided viewing experience while allowing temporary exploration:
+
+```php
+    ->recenterTimeout(5000)  // Recenter after 5 seconds (null to disable)
+```
+
+![Infolist Entry Example](images/infolist-entry.png)
 
 ## Map Elements
 
