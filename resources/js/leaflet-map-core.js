@@ -12,7 +12,14 @@ import { TinyColor } from '@ctrl/tinycolor'
 import "@geoman-io/leaflet-geoman-free";
 import 'leaflet.markercluster'
 import { FullScreen } from 'leaflet.fullscreen';
-import { EsriProvider, GeoSearchControl } from 'leaflet-geosearch';
+import {
+    GeoSearchControl,
+    EsriProvider,
+    GoogleProvider,
+    MapBoxProvider,
+    BingProvider,
+    OpenStreetMapProvider
+} from 'leaflet-geosearch';
 
 export class LeafletMapCore {
     constructor(config) {
@@ -43,6 +50,10 @@ export class LeafletMapCore {
         }
 
         this.addLayers();
+
+        if (this.config.fitBounds) {
+            this.applyFitBounds();
+        }
     }
 
     /**
@@ -181,6 +192,57 @@ export class LeafletMapCore {
             dashArray: '3',
             fillOpacity: 0.8
         };
+    }
+
+    applyFitBounds() {
+        const bounds = L.latLngBounds();
+
+        // Collect bounds from all layers
+        this.layers.forEach(({ layer }) => {
+            const rawLayer = Alpine.raw(layer);
+            if (
+                rawLayer instanceof L.Marker ||
+                rawLayer instanceof L.CircleMarker
+            ) {
+                bounds.extend(rawLayer.getLatLng());
+
+            } else if (
+                rawLayer instanceof L.Circle ||
+                rawLayer instanceof L.Path
+            ) {
+                bounds.extend(rawLayer.getBounds());
+            }
+        });
+
+        // Collect bounds from layer groups
+        this.layerGroups.forEach(({ layer }) => {
+            const rawLayer = Alpine.raw(layer);
+            if (rawLayer && typeof rawLayer.getBounds === 'function') {
+                const groupBounds = rawLayer.getBounds();
+                if (groupBounds.isValid()) {
+                    bounds.extend(groupBounds);
+                }
+            }
+        });
+
+        // Also include geoJson layer bounds if available
+        if (this.geoJsonLayer) {
+            const rawGeoJson = Alpine.raw(this.geoJsonLayer);
+            if (rawGeoJson && typeof rawGeoJson.getBounds === 'function') {
+                const geojsonBounds = rawGeoJson.getBounds();
+                if (geojsonBounds.isValid()) {
+                    bounds.extend(geojsonBounds);
+                }
+            }
+        }
+
+        // Apply fitBounds if we have any bounds to fit
+        if (bounds.isValid()) {
+            Alpine.raw(this.map).fitBounds(bounds, {
+                padding: [50, 50],
+                maxZoom: this.config.zoomConfig.max
+            });
+        }
     }
 
     removeLayer(layerData) {
@@ -525,9 +587,9 @@ export class LeafletMapCore {
             html += `<div>${popupConfig.content}</div>`;
         }
 
-        if (popupConfig.actions && popupConfig.actions.length > 0) {
-            popupConfig.actions.forEach(action => {
-                html += `<button onclick="${action.action}">${action.label}</button>`;
+        if (popupConfig.fields && Object.keys(popupConfig.fields).length > 0) {
+            Object.entries(popupConfig.fields).forEach(([key, value]) => {
+                html += `<p><span class="field-label">${key}:</span> ${value}</p>`;
             });
         }
 
@@ -596,7 +658,7 @@ export class LeafletMapCore {
             this.setupFullscreenControl();
         }
 
-        if (this.config.mapControls.searchControl) {
+        if (this.config.mapControls.geoSearchControl) {
             this.setupSearchControl();
         }
 
@@ -627,7 +689,10 @@ export class LeafletMapCore {
      * Configura controle de zoom
      */
     setupZoomControl() {
-        const zoom = new L.control.zoom();
+        const zoom = new L.control.zoom({
+            zoomInTitle: this.getTranslation('zoom_in'),
+            zoomOutTitle: this.getTranslation('zoom_out')
+        });
         zoom.addTo(Alpine.raw(this.map));
     }
 
@@ -635,12 +700,16 @@ export class LeafletMapCore {
      * Configura controle de busca
      */
     setupSearchControl() {
-        const provider = new EsriProvider();
+        const provider = this.createGeoSearchProvider();
+
+        if (!provider) {
+            return;
+        }
 
         const search = new GeoSearchControl({
             provider: provider,
-            notFoundMessage: this.getTranslation('address_not_found', ''),
-            searchLabel: this.getTranslation('enter_address', ''),
+            notFoundMessage: this.getTranslation('address_not_found'),
+            searchLabel: this.getTranslation('enter_address'),
 
             marker: {
                 icon: this.createIcon(),
@@ -652,12 +721,63 @@ export class LeafletMapCore {
     }
 
     /**
+     * Cria o provedor de geosearch baseado na configuração
+     */
+    createGeoSearchProvider() {
+        const config = this.config.geoSearchConfig;
+        const provider = config?.provider || 'nominatim';
+        const apiKey = config?.apiKey;
+
+        switch (provider) {
+            case 'nominatim':
+                return new OpenStreetMapProvider();
+
+            case 'google':
+                if (!apiKey) {
+                    console.warn('Google Maps API Key is required but not provided');
+                    return new EsriProvider();
+                }
+                return new GoogleProvider({
+                    params: {
+                        key: apiKey,
+                    }
+                });
+
+            case 'mapbox':
+                if (!apiKey) {
+                    console.warn('Mapbox API Key is required but not provided');
+                    return new EsriProvider();
+                }
+                return new MapBoxProvider({
+                    params: {
+                        access_token: apiKey,
+                    }
+                });
+
+            case 'bing':
+                if (!apiKey) {
+                    console.warn('Bing Maps API Key is required but not provided');
+                    return new EsriProvider();
+                }
+                return new BingProvider({
+                    params: {
+                        key: apiKey,
+                    }
+                });
+
+            default:
+                console.warn(`Unknown geosearch provider: ${provider}, using Esri`);
+                return new EsriProvider();
+        }
+    }
+
+    /**
      * Configura controle de tela cheia
      */
     setupFullscreenControl() {
         const fullscreen = new FullScreen({
-            title: this.getTranslation('full_screen', ''),
-            titleCancel: this.getTranslation('exit_full_screen', ''),
+            title: this.getTranslation('full_screen'),
+            titleCancel: this.getTranslation('exit_full_screen'),
             forceSeparateButton: true,
         });
 
@@ -865,6 +985,10 @@ export class LeafletMapCore {
         if (Object.keys(this.config.geoJsonData)?.length) {
             this.setupInfoControl();
             this.loadGeoJson();
+        }
+
+        if (this.config.fitBounds) {
+            this.applyFitBounds();
         }
     }
 

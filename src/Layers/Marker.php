@@ -1,9 +1,9 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support\Markers;
+namespace EduardoRibeiroDev\FilamentLeaflet\Layers;
 
 use Closure;
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\BaseLayer;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Filament\Support\Enums\IconSize;
 use Filament\Support\Icons\Heroicon;

@@ -1,7 +1,8 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support;
+namespace EduardoRibeiroDev\FilamentLeaflet\LayerGroups;
 
+use EduardoRibeiroDev\FilamentLeaflet\Layers\BaseLayer;
 use Filament\Support\Concerns\EvaluatesClosures;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;

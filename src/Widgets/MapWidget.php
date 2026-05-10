@@ -3,7 +3,8 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Widgets;
 
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasMapConfig;
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
+use EduardoRibeiroDev\FilamentLeaflet\Fields\MapPicker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\BaseLayer;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -16,7 +17,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
-use Filament\Forms\Components\Hidden;
 use Filament\Widgets\Widget;
 use Exception;
 use Filament\Actions\DeleteAction;
@@ -55,7 +55,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
 
     public function handleMapClick(float $latitude, float $longitude): void
     {
-        if ($this->markerModel) {
+        if ($this->getMarkerModel()) {
             $this->mountAction('createMarker', [
                 $this->getCoordinatesColumnName() => new Coordinate($latitude, $longitude)
             ]);
@@ -67,7 +67,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
         $layer = $this->getLayerById($layerId);
         $this->handleMapLayerClick($layer);
 
-        if (!$this->markerModel) {
+        if (!$this->getMarkerModel()) {
             return;
         }
 
@@ -129,12 +129,16 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
         $coordsColumn = $this->getCoordinatesColumnName();
         $hasCoords = $form->getComponent($coordsColumn);
 
-        if ($hasCoords) {
+        if ($hasCoords !== null) {
             return;
         }
 
         $components = $form->getComponents();
-        $components[] = Hidden::make($coordsColumn);
+        
+        $components[] = MapPicker::make($coordsColumn)
+            ->dehydratedWhenHidden(true)
+            ->hidden();
+
         $form->schema($components);
     }
 
@@ -144,7 +148,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
     public function createMarkerAction(): Action
     {
         return CreateAction::make('createMarker')
-            ->model(self::getMarkerModel())
+            ->model($this->getMarkerModel())
             ->mountUsing(function (Schema $form, array $arguments) {
                 $form->fill();
 
@@ -223,7 +227,7 @@ abstract class MapWidget extends Widget implements HasSchemas, HasActions
 
     protected function getMarkerModel(): ?string
     {
-        return $this->markerModel;
+        return $this->markerModel ?? ($this->markerResource ? $this->markerResource::getModel() : null);
     }
 
     protected function getMarkerResource(): ?string

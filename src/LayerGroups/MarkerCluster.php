@@ -1,10 +1,10 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support\Groups;
+namespace EduardoRibeiroDev\FilamentLeaflet\LayerGroups;
 
 use Closure;
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayerGroup;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\BaseLayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasColor;
 use Illuminate\Database\Eloquent\Model;
 

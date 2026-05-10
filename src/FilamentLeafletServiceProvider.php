@@ -17,6 +17,7 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
         $package
             ->name('filament-leaflet')
             ->hasConfigFile('filament-leaflet')
+            ->hasTranslations()
             ->hasViews();
     }
 
@@ -37,7 +38,7 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
         ], 'filament-leaflet-config');
 
         FilamentAsset::registerScriptData([
-            'translations' => Lang::get('filament-leaflet::filament-leaflet'),
+            'translations' => Lang::get('filament-leaflet::map-controls'),
             'language' => Lang::getLocale(),
         ]);
 

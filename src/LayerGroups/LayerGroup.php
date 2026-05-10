@@ -1,8 +1,8 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support\Groups;
+namespace EduardoRibeiroDev\FilamentLeaflet\LayerGroups;
 
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\BaseLayerGroup;
 
 class LayerGroup extends BaseLayerGroup
 {

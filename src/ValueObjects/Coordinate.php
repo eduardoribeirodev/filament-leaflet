@@ -7,8 +7,10 @@ use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
+use Livewire\Wireable;
+use Override;
 
-readonly class Coordinate implements Arrayable, Castable
+readonly class Coordinate implements Arrayable, Castable, Wireable
 {
     public const LATITUDE_KEY = 'lat';
     public const LONGITUDE_KEY = 'lng';
@@ -36,7 +38,7 @@ readonly class Coordinate implements Arrayable, Castable
         $lat = $array[static::LATITUDE_KEY] ?? $array[0] ?? null;
         $lng = $array[static::LONGITUDE_KEY] ?? $array[1] ?? null;
 
-        if (!$lat || !$lng) return null;
+        if ($lat === null || $lng === null) return null;
 
         return new static($lat, $lng);
     }
@@ -46,7 +48,7 @@ readonly class Coordinate implements Arrayable, Castable
         $lat = $object->{static::LATITUDE_KEY} ?? null;
         $lng = $object->{static::LONGITUDE_KEY} ?? null;
 
-        if (!$lat || !$lng) return null;
+        if ($lat === null || $lng === null) return null;
 
         return new static($lat, $lng);
     }
@@ -87,7 +89,7 @@ readonly class Coordinate implements Arrayable, Castable
                 $lat = $coords[$this->latColumn];
                 $lng = $coords[$this->lngColumn];
 
-                if (!$lat || !$lng) return null;
+                if ($lat === null || $lng === null) return null;
 
                 return new Coordinate($lat, $lng);
             }
@@ -98,13 +100,18 @@ readonly class Coordinate implements Arrayable, Castable
                     $value = Coordinate::fromArray($value);
                 }
 
-                if (!$value instanceof Coordinate) {
+                if ($value instanceof GeoSearchResult) {
+                    $value = $value->coordinate;
+                }
+
+
+                if ($value !== null && !$value instanceof Coordinate) {
                     throw new InvalidArgumentException('Value must be an instance of Coordinate');
                 }
 
                 $coords = [
-                    $this->latColumn => $value->lat,
-                    $this->lngColumn => $value->lng,
+                    $this->latColumn => $value?->lat,
+                    $this->lngColumn => $value?->lng,
                 ];
 
                 $storeAsJson = array_key_exists($key, $attributes);
@@ -131,5 +138,15 @@ readonly class Coordinate implements Arrayable, Castable
         $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) + cos($latFrom) * cos($latTo) * pow(sin($lngDelta / 2), 2)));
 
         return $angle * $earthRadius;
+    }
+
+    public static function fromLivewire(mixed $value)
+    {
+        return static::fromArray($value);
+    }
+
+    public function toLivewire()
+    {
+        return $this->toArray();
     }
 }

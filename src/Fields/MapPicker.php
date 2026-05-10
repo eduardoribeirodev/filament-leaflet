@@ -3,8 +3,9 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Fields;
 
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasMapState;
-use EduardoRibeiroDev\FilamentLeaflet\StateCasts\CoordinatesStateCast;
+use EduardoRibeiroDev\FilamentLeaflet\StateCasts\CoordinateStateCast;
 use Filament\Forms\Components\Field;
+use Illuminate\Database\Eloquent\Model;
 
 class MapPicker extends Field
 {
@@ -14,7 +15,7 @@ class MapPicker extends Field
     public function getDefaultStateCasts(): array
     {
         return [
-            app(CoordinatesStateCast::class),
+            app(CoordinateStateCast::class),
         ];
     }
 
@@ -22,10 +23,12 @@ class MapPicker extends Field
     {
         parent::setUp();
         $this->height(284);
-        $this->afterStateHydrated(
-            fn($record, $component) => $component->state(
-                $record?->getAttribute($component->getName())
-            )
-        );
+        $this->afterStateHydrated(function (?Model $record, self $component) {
+            if ($record) {
+                $component->state(
+                    $record->getAttribute($component->getName())
+                );
+            }
+        });
     }
 }

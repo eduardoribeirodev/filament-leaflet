@@ -4,7 +4,7 @@ namespace EduardoRibeiroDev\FilamentLeaflet\Tables;
 
 use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasMapState;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
 use Filament\Tables\Columns\Column;
 
 class MapColumn extends Column

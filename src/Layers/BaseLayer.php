@@ -1,10 +1,11 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support;
+namespace EduardoRibeiroDev\FilamentLeaflet\Layers;
 
 use Closure;
 use DateTime;
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasColor;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\BaseLayerGroup;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Filament\Support\Concerns\EvaluatesClosures;
 use Illuminate\Contracts\Support\Arrayable;
@@ -212,12 +213,12 @@ abstract class BaseLayer implements Arrayable, Jsonable
      * @param Closure|string $dateFormat A string or a Closure that returns a string specifying how to format any DateTime values in the fields. For example, 'dd/MM/YYYY' would format dates as day/month/year. If a Closure is provided, it will be evaluated to get the date format string.
      * @return $this
      */
-    public function popupFields(array|Collection $fields, Closure|string $dateFormat = 'dd/MM/YYYY'): static
+    public function popupFields(array|Collection $fields, Closure|string $dateFormat = 'd/m/Y'): static
     {
         $collectedFields = is_array($fields) ? collect($fields) : $fields;
 
         $mappedFields = $collectedFields->mapWithKeys(function ($value, $key) use ($dateFormat) {
-            $label = str($key)->kebab()->replace('-', ' ')->title()->toString();
+            $label = str($key)->camel()->kebab()->replace('-', ' ')->title()->toString();
             $content = $value instanceof DateTime ? $value->format($dateFormat) : $value;
 
             return [__($label) => __($content) ?: '--'];

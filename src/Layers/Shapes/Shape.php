@@ -1,9 +1,9 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
+namespace EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes;
 
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasFillColor;
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\BaseLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasPath;
 
 abstract class Shape extends BaseLayer

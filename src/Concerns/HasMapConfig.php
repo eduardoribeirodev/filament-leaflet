@@ -2,12 +2,13 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Concerns;
 
+use EduardoRibeiroDev\FilamentLeaflet\Enums\GeoSearchProvider;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayerGroup;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\LayerGroup;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Shape;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\BaseLayer;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\BaseLayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\LayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Shape;
 use Livewire\Attributes\On;
 
 trait HasMapConfig
@@ -15,6 +16,7 @@ trait HasMapConfig
     // Configurações padrão do mapa
     protected ?array $mapCenter = null;
     protected bool $autoCenter = false;
+    protected bool $fitBounds = false;
     protected int $defaultZoom = 4;
     protected int $mapHeight = 598;
     protected ?int $recenterMapTimeout = null;
@@ -24,9 +26,13 @@ trait HasMapConfig
     // Configurações de controles
     protected bool $hasAttributionControl = false;
     protected bool $hasFullscreenControl = false;
-    protected bool $hasSearchControl = false;
     protected bool $hasScaleControl = false;
     protected bool $hasZoomControl = true;
+
+    // Configurações de GeoSearch
+    protected bool $hasGeoSearchControl = false;
+    protected GeoSearchProvider $geoSearchProvider = GeoSearchProvider::Nominatim;
+    protected ?string $geoSearchApiKey = null;
 
     // Controles do Geoman
     protected bool $hasDrawMarkerControl = false;
@@ -76,6 +82,14 @@ trait HasMapConfig
     protected function getAutoCenter(): bool
     {
         return $this->autoCenter;
+    }
+
+    /**
+     * Define se o mapa deve fazer zoom automático para mostrar todos os markers.
+     */
+    protected function getFitBounds(): bool
+    {
+        return $this->fitBounds;
     }
 
     /**
@@ -129,9 +143,35 @@ trait HasMapConfig
     /**
      * Define se o controle de search deve ser exibido.
      */
-    protected function hasSearchControl(): bool
+    protected function hasGeoSearchControl(): bool
     {
-        return $this->hasSearchControl;
+        return $this->hasGeoSearchControl;
+    }
+
+    /**
+     * Retorna o provedor de geosearch configurado.
+     */
+    protected function getGeoSearchProvider(): GeoSearchProvider
+    {
+        return $this->geoSearchProvider;
+    }
+
+    /**
+     * Retorna a chave de API para geosearch.
+     */
+    protected function getGeoSearchApiKey(): ?string
+    {
+        if ($this->geoSearchApiKey) {
+            return $this->geoSearchApiKey;
+        }
+
+        $envVariable = $this->geoSearchProvider->getApiKeyEnvVariable();
+
+        if ($envVariable) {
+            return env($envVariable);
+        }
+
+        return null;
     }
 
     /**
@@ -299,7 +339,18 @@ trait HasMapConfig
             'zoomControl'        => $this->hasZoomControl(),
             'drawControls'       => $this->getDrawControls(),
             'fullscreenControl'  => $this->hasFullscreenControl(),
-            'searchControl'      => $this->hasSearchControl(),
+            'geoSearchControl'   => $this->hasGeoSearchControl(),
+        ];
+    }
+
+    /**
+     * Retorna configurações do geosearch para o controle de busca.
+     */
+    protected final function getGeoSearchConfig(): array
+    {
+        return [
+            'provider' => $this->getGeoSearchProvider()->value,
+            'apiKey'   => $this->getGeoSearchApiKey(),
         ];
     }
 
@@ -575,6 +626,7 @@ trait HasMapConfig
             'mapHeight'       => $this->getMapHeight(),
             'defaultCoord'    => $this->getMapCenter(),
             'autoCenter'      => $this->getAutoCenter(),
+            'fitBounds'       => $this->getFitBounds(),
             'defaultZoom'     => $this->getDefaultZoom(),
             'geoJsonColors'   => $this->getGeoJsonColors(),
             'geoJsonData'     => $this->getGeoJsonData(),
@@ -585,6 +637,7 @@ trait HasMapConfig
             'zoomConfig'      => $this->getZoomOptions(),
             'mapConfig'       => $this->getMapOptions(),
             'mapControls'     => $this->getMapControls(),
+            'geoSearchConfig' => $this->getGeoSearchConfig(),
             'geoJsonUrl'      => $this->getGeoJsonUrl(),
             'customStyles'    => $this->getCustomStyles(),
             'customScripts'   => $this->getCustomScripts(),

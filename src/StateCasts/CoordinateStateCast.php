@@ -5,7 +5,7 @@ namespace EduardoRibeiroDev\FilamentLeaflet\StateCasts;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Filament\Schemas\Components\StateCasts\Contracts\StateCast;
 
-class CoordinatesStateCast implements StateCast
+class CoordinateStateCast implements StateCast
 {
     public function get(mixed $state): mixed
     {

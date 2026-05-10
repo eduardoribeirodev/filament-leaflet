@@ -32,6 +32,9 @@ A powerful and elegant Leaflet integration for Filament PHP that makes creating 
 - **Mapbox Tile Layer Support** - New tile layer provider with configurable Access Token and tile size
 - **Marker CRUD Actions** - Built-in view, edit, and delete actions for markers on the map
 - **Coordinate DTO** - Improved handling of latitude/longitude pairs with dedicated DTO class
+- **GeoSearch Input Field** - Geocoding search field with multiple provider support (Nominatim, Google Maps, Mapbox, Bing Maps)
+- **Address Value Object** - Detailed address information from geocoding services
+- **Layer Architecture** - Improved class hierarchy with `BaseLayer`, proper type hints, and Livewire compatibility
 
 ## Installation
 
@@ -77,7 +80,7 @@ Create your first interactive map widget:
 namespace App\Filament\Widgets;
 
 use EduardoRibeiroDev\FilamentLeaflet\Widgets\MapWidget;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
 
 class MyMapWidget extends MapWidget
 {
@@ -357,7 +360,7 @@ Display maps directly in Filament table columns:
 
 ```php
 use EduardoRibeiroDev\FilamentLeaflet\Tables\MapColumn;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
 
 MapColumn::make('location')
     ->height(100)
@@ -386,7 +389,7 @@ Display read-only maps in Filament infolists:
 
 ```php
 use EduardoRibeiroDev\FilamentLeaflet\Infolists\MapEntry;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
 
 MapEntry::make('location')
     ->height(284)
@@ -404,6 +407,101 @@ MapEntry::make('location')
 
 ![Infolist Entry Example](images/infolist-entry.png)
 
+### GeoSearchInput (Form Field)
+
+Search and select locations using multiple geocoding providers:
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Fields\GeoSearchInput;
+use EduardoRibeiroDev\FilamentLeaflet\Enums\GeoSearchProvider;
+
+GeoSearchInput::make('location')
+    ->provider(GeoSearchProvider::Nominatim)  // Uses OpenStreetMap
+    ->limit(10)                               // Max 10 results
+    ->withAddressDetails()                    // Include structured address data
+    ->language('ru')                          // Preferred language
+    ->countryCodes('ru')                      // Restrict to Russia
+    ->cacheResults(3600)                      // Cache for 1 hour
+    ->textMode(false)                         // Stores full address instead of  coordinates
+    ->columnSpanFull()
+```
+
+![GeoSearch Input Example](images/geo-search-input.png)
+
+**Supported Providers:**
+
+- `Nominatim` (OpenStreetMap) - Free, no API key required
+- `GoogleMaps` - Requires `GOOGLE_MAPS_API_KEY` environment variable
+- `Mapbox` - Requires `MAPBOX_API_KEY` environment variable
+- `BingMaps` - Requires `BING_MAPS_API_KEY` environment variable
+
+**Advanced Configuration:**
+
+```php
+// Restrict results to a geographic bounding box
+GeoSearchInput::make('location')
+    ->provider(GeoSearchProvider::Nominatim)
+    ->viewbox(
+        minLon: 19.0,   // West
+        minLat: 41.0,   // South
+        maxLon: 190.0,  // East
+        maxLat: 82.0    // North
+    )
+    ->bounded(true)  // Strictly restrict to viewbox
+    ->minSearchLength(3)  // Don't search until user types 3+ chars
+    ->useShortLabels(true)  // "Moscow Kremlin" instead of full address
+```
+
+![Short Labels GeoSearch Input Example](images/short-labels-geo-search-input.png)
+
+**Form Model Integration:**
+
+The field returns a `GeoSearchResult` object containing:
+- `coordinate` - The selected location's latitude/longitude
+- `name` - Short place name
+- `displayName` - Full address
+- `address` - Structured address with country, city, postcode, etc.
+- `type` - Location type (building, street, city, etc.)
+- `addresstype` - More specific type (e.g. "tourism", "shop", "amenity")
+- `boundingbox` - Geographic bounds of the location
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Fields\GeoSearchInput;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\GeoSearchResult;
+
+GeoSearchInput::make('location')->afterStateUpdated(function (callable $set, GeoSearchResult $result) {
+    // Access the selected location's data
+    $coordinate = $result->coordinate;  // Coordinate object with lat/lng
+    $name = $result->name;              // Short name (e.g. "Eiffel Tower")
+    $displayName = $result->displayName; // Full address
+    $address = $result->address;        // Structured address data
+    $type = $result->type;              // Location type (e.g. "tourism")
+    $addresstype = $result->addresstype; // More specific type (e.g. "tourism", "shop", "amenity")
+    // Example: Set a separate fields
+    $set('full_address', $displayName);
+    $set('city', $address->city);
+    $set('country', $address->country);
+    $set('type', $type);
+    $set('addresstype', $addresstype);
+})
+```
+
+**Address Components:**
+
+The `Address` object provides structured address data:
+
+```php
+$address = $result->address;
+
+$address->country;       // "Brazil"
+$address->countryCode;   // "BR"
+$address->state;         // "São Paulo"
+$address->city;          // "São Paulo"
+$address->county;        // County name
+$address->postcode;      // Postal code
+$address->suburb;        // Suburb/neighborhood
+```
+
 ## Map Elements
 
 ### Markers
@@ -411,7 +509,7 @@ MapEntry::make('location')
 #### Creating Markers
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
 use Filament\Support\Colors\Color;
 
 protected function getMarkers(): array
@@ -534,7 +632,7 @@ Layer groups are a powerful way to organize and manage multiple layers on your m
 A simple container for organizing related layers. Perfect for grouping logically related markers and shapes without any automatic behavior:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\LayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\LayerGroup;
 
 protected function getMarkers(): array
 {
@@ -580,7 +678,7 @@ protected function getMarkers(): array
 Creates a polygon envelope around all layers in the group. This is useful for visualizing the coverage area or boundary of a set of points:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\FeatureGroup;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\FeatureGroup;
 
 protected function getMarkers(): array
 {
@@ -607,7 +705,7 @@ protected function getMarkers(): array
 Groups nearby markers into clusters for better performance and visual clarity, especially with large datasets. Clusters automatically expand when zooming in:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Groups\MarkerCluster;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\MarkerCluster;
 
 protected function getMarkers(): array
 {
@@ -633,7 +731,7 @@ Create clusters directly from Eloquent models with powerful customization:
 
 ```php
 use App\Models\Store;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
 use Filament\Support\Colors\Color;
 
 protected function getMarkers(): array
@@ -713,7 +811,7 @@ Draw various geometric shapes on your map:
 Circles with radius in various units:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Circle;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Circle;
 
 protected function getShapes(): array
 {
@@ -739,7 +837,7 @@ protected function getShapes(): array
 Small circles with pixel-based radius (like markers but circular):
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\CircleMarker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\CircleMarker;
 
 CircleMarker::make(-23.5505, -46.6333)
     ->radius(45) // Radius in pixels
@@ -756,7 +854,7 @@ CircleMarker::make(-23.5505, -46.6333)
 Draw custom polygons:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Polygon;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Polygon;
 
 // Define a polygon area
 Polygon::make(
@@ -787,7 +885,7 @@ Polygon::make()
 Draw lines connecting multiple points:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Polyline;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Polyline;
 
 // Route or path
 Polyline::make(
@@ -819,7 +917,7 @@ Polyline::make()
 Draw rectangular bounds:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Rectangle;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Rectangle;
 
 // Using corner coordinates
 Rectangle::make(
@@ -847,11 +945,11 @@ All shape classes support `fromRecord()` factory methods for easy creation from 
 
 ```php
 use App\Models\DeliveryZone;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Circle;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Polygon;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Polyline;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Rectangle;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\CircleMarker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Circle;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Polygon;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Polyline;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Rectangle;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\CircleMarker;
 
 protected function getShapes(): array
 {
@@ -859,8 +957,8 @@ protected function getShapes(): array
         // Circle from record
         return Circle::fromRecord(
             record: $zone,
-            latColumn: 'latitude',
-            lngColumn: 'longitude',
+            coordsColumn: 'center_coordinates',
+            radiusColumn: 'coverage_radius_km',
             titleColumn: 'name',
             descriptionColumn: 'description',
             popupFieldsColumns: ['address', 'radius'],
@@ -1095,11 +1193,7 @@ Circle::make(-23.5505, -46.6333)
 protected function getMarkers(): array
 {
     return Store::all()->map(function ($store) {
-        return Marker::fromRecord(
-            record: $store,
-            latColumn: 'latitude',
-            lngColumn: 'longitude',
-        )->action(function (Marker $marker, Store $record) { // Or ->onClick()
+        return Marker::fromRecord($store)->action(function (Marker $marker, Store $record) { // Or ->onClick()
             Notification::make()
                 ->title("You clicked: {$record->name}")
                 ->body("Address: {$record->address}")
@@ -1146,7 +1240,7 @@ MapPicker::make('location')
 Handle layer (marker/shape) clicks:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayer;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\BaseLayer;
 
 MapPicker::make('location')
     ->height(300)
@@ -1401,6 +1495,22 @@ public function getCustomScripts(): string
 ```
 
 ### Method Reference
+
+#### GeoSearchInput
+
+| Method | Description |
+|--------|-------------|
+| `provider($provider)` | Set geocoding provider (Nominatim, GoogleMaps, Mapbox, BingMaps) |
+| `limit($count)` | Set maximum results (1–50, default 25) |
+| `withAddressDetails($enabled)` | Include structured address in results (default true) |
+| `language($code)` | Set preferred language (e.g., 'pt-BR', 'en') |
+| `countryCodes($codes)` | Restrict to country codes (e.g., 'br', ['br', 'ar']) |
+| `viewbox($minLon, $minLat, $maxLon, $maxLat)` | Set bounding box to bias/restrict results |
+| `bounded($enabled)` | Strictly restrict results to viewbox (default false) |
+| `cacheResults($ttl)` | Cache results for given seconds (default 3600) |
+| `minSearchLength($chars)` | Minimum characters before searching (default 2) |
+| `useShortLabels($enabled)` | Use short labels instead of full address (default false) |
+| `textMode($enabled)` | Return text only instead of coordinates (default false) |
 
 #### MapWidget
 
@@ -1681,20 +1791,14 @@ class Store extends Model
 {
     protected $casts = [
         // Maps to latitude and longitude columns
-        'location' => Coordinate::class . ':latitude,longitude',
+        'location' => Coordinate::class,
     ];
 }
 
-// Your model has database columns: latitude, longitude
-// But you access them through a single 'location' virtual attribute
+// Usage
 $store = Store::first();
 echo $store->location->lat;   // Reads from 'latitude' column
 echo $store->location->lng;   // Reads from 'longitude' column
-
-// Setting coordinates updates both columns
-$store->location = new Coordinate(-23.5505, -46.6333);
-// Automatically saves to both latitude and longitude columns
-$store->save();
 ```
 
 **Practical Example - Virtual Attribute:**
@@ -1713,39 +1817,26 @@ Schema::create('stores', function (Blueprint $table) {
 class Store extends Model
 {
     protected $casts = [
-        'location' => Coordinate::class . ':latitude,longitude',
+        'location' => Coordinate::class . ':latitude,longitude', // If the lat/lng columns don't follow the config default names, specify them here
     ];
 }
-
-// Usage
-$store = Store::create([
-    'name' => 'Main Store',
-    'location' => new Coordinate(-23.5505, -46.6333),
-]);
-
-// Database now has:
-// latitude: -23.5505
-// longitude: -46.6333
-
-// Access through virtual attribute
-echo $store->location->lat;  // -23.5505
-echo $store->location->lng;  // -46.6333
 ```
 
 **Basic Usage:**
 
 ```php
-// Create from array
-$coord = Coordinate::fromArray(['lat' => -23.5505, 'lng' => -46.6333]);
+$store1 = Store::first();
+$store2 = Store::find(2);
 
-// Convert to array
-$array = $coord->toArray();  // ['lat' => -23.5505, 'lng' => -46.6333]
+echo $store1->location->lat;  // Access latitude
+echo $store1->location->lng;  // Access longitude
 
-// Flat array for Leaflet
-$flat = $coord->toFlatArray();  // [-23.5505, -46.6333]
+$distance = $store1->location->distanceTo($store2->location); // Calculate distance in kilometers
+$store1->toArray(); // ['lat' => -23.5505, 'lng' => -46.6333]
+$store1->toFlatArray(); // [-23.5505, -46.6333]
 
-// Calculate distance to another coordinate
-$distance = $coord->distanceTo(new Coordinate(-23.5515, -46.6343));  // In kilometers
+$store1->location = new Coordinate(-23.5505, -46.6333); // Update location
+$store1->save();
 ```
 
 **Methods:**
@@ -1760,6 +1851,41 @@ $distance = $coord->distanceTo(new Coordinate(-23.5515, -46.6343));  // In kilom
 | `from($coordinates)` | Universal factory method for arrays, objects, or Coordinate instances |
 | `distanceTo($other)` | Calculate distance to another Coordinate (in kilometers) |
 | `castUsing()` | Internal method for configuring Eloquent casting |
+
+### GeoSearchResult
+
+The `GeoSearchResult` value object represents a geocoding search result with complete location information from geocoding providers.
+
+**Properties:**
+
+```php
+$result->coordinate;   // Coordinate object with lat/lng
+$result->name;         // Short place name (e.g., "São Paulo")
+$result->displayName;  // Full formatted address
+$result->type;         // Location type (building, street, city, etc.)
+$result->addresstype;  // Address classification
+$result->address;      // Address value object with detailed components
+$result->boundingbox;  // Geographic bounds [minLat, minLng, maxLat, maxLng]
+```
+
+### Address
+
+The `Address` value object contains structured address information from geocoding results.
+
+**Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `suburb` | string\|null | Suburb or neighborhood name |
+| `cityDistrict` | string\|null | City district |
+| `city` | string\|null | City name (town, village) |
+| `county` | string\|null | County name |
+| `state` | string\|null | State or province |
+| `province` | string\|null | Province name |
+| `region` | string\|null | Region name |
+| `postcode` | string\|null | Postal code |
+| `country` | string\|null | Country name |
+| `countryCode` | string\|null | ISO 3166-1 country code |
 
 ## Concern Methods Reference
 

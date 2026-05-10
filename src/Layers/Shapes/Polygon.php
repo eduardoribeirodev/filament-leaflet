@@ -1,24 +1,25 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
+namespace EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes;
 
 use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Illuminate\Database\Eloquent\Model;
 
-class Polyline extends Shape
+class Polygon extends Shape
 {
-    protected ?string $pointsColumn = null;
-
+    /**
+     * @param array $points Array de coordenadas ex: [[-15.0, -50.0], [-15.1, -50.1], ...]
+     */
     final public function __construct(array ...$points)
     {
         $this->layerState['points'] = $points;
     }
 
     /**
-     * Convenience method to create a Polyline instance with given points.
+     * Convenience method to create a Polygon instance with given points.
      * @param array ...$points Variable number of arrays, each representing a point as [latitude, longitude]. Can also accept a single array of points (e.g. make([[-15.0, -50.0], [-15.1, -50.1]])).
-     * @return static A new Polyline instance with the specified points.
+     * @return static A new Polygon instance with the specified points.
      */
     public static function make(array ...$points): static
     {
@@ -26,16 +27,16 @@ class Polyline extends Shape
     }
 
     /**
-     * Create a Polyline instance from an Eloquent record. The method will attempt to extract the polyline points from the specified $pointsColumn, which can be a JSON string or an array. It will also set the title, description, popup fields, and color based on the provided parameters and the record's attributes.
-     * @param Model $record The Eloquent model record to create the polyline from.
-     * @param string|null $pointsColumn The column name for the polyline points.
-     * @param string|null $titleColumn Optional column name for polyline title.
-     * @param string|null $descriptionColumn Optional column name for polyline description.
+     * Create a Polygon instance from an Eloquent record. The method will attempt to extract the polygon points from the specified $pointsColumn, which can be a JSON string or an array. It will also set the title, description, popup fields, and color based on the provided parameters and the record's attributes.
+     * @param Model $record The Eloquent model record to create the polygon from.
+     * @param string|null $pointsColumn The column name for the polygon points.
+     * @param string|null $titleColumn Optional column name for polygon title.
+     * @param string|null $descriptionColumn Optional column name for polygon description.
      * @param array|null $popupFieldsColumns Optional array of column names to include in popup.
-     * @param string|array|null $color Optional polyline color.
+     * @param string|array|null $color Optional polygon color.
      * @param bool|null $syncRecord Whether to sync changes back to the record when the shape is edited on the map.
-     * @param Closure|null $mapRecordCallback Optional Closure to further customize the polyline based on the record.
-     * @return static A new Polyline instance configured based on the provided record.
+     * @param Closure|null $mapRecordCallback Optional Closure to further customize the polygon based on the record.
+     * @return static A new Polygon instance configured based on the provided record.
      */
     public static function fromRecord(
         Model $record,
@@ -48,7 +49,7 @@ class Polyline extends Shape
         ?Closure $mapRecordCallback = null
     ): static {
         $points = $record->{$pointsColumn} ?? [];
-
+        
         return static::makeFromRecord(
             record: $record,
             instanceParameters: is_string($points) ? json_decode($points, true) : $points,
@@ -61,15 +62,17 @@ class Polyline extends Shape
             jsonColumn: $pointsColumn,
             popupFieldsColumns: $popupFieldsColumns,
             color: $color,
-            mapRecordCallback: $mapRecordCallback
+            mapRecordCallback: $mapRecordCallback,
         );
     }
 
+
     /**
-     * Add a point to the polyline. The $latitude and $longitude parameters specify the coordinates of the point to be added. This method appends the new point to the existing list of points that define the polyline.
-     * @param float $latitude The latitude of the point to be added to the polyline.
-     * @param float $longitude The longitude of the point to be added to the polyline.
-     * @return $this The current Polyline instance with the new point added.
+     * Add a point to the polygon. The $latitude and $longitude parameters specify the coordinates of the point to be added. This method appends the new point to the existing list of points that define the polygon.
+     * @param float $latitude The latitude of the point to be added to the polygon.
+     * @param float $longitude The longitude of the point to be added to the polygon.
+     * @return $this The current Polygon instance with the new point added.
+     * @example $polygon->addPoint(-15.0, -50.0); // Adds a point with latitude -15.0 and longitude -50.0 to the polygon.
      */
     public function addPoint(float $latitude, float $longitude): static
     {
@@ -79,7 +82,7 @@ class Polyline extends Shape
 
     public function getType(): string
     {
-        return 'polyline';
+        return 'polygon';
     }
 
     protected function getShapeData(): array
@@ -95,7 +98,7 @@ class Polyline extends Shape
             return new Coordinate(0, 0);
         }
 
-        // Calcula o ponto médio da linha
+        // Calcula o centroide do polígono
         $latSum = 0;
         $lngSum = 0;
         foreach ($this->layerState['points'] as $point) {

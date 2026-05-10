@@ -3,10 +3,11 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Concerns;
 
 use Closure;
+use EduardoRibeiroDev\FilamentLeaflet\Enums\GeoSearchProvider;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Markers\Marker;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Shape;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Shape;
 use Filament\Support\Components\Attributes\ExposedLivewireMethod;
 
 trait HasMapState
@@ -64,6 +65,18 @@ trait HasMapState
     public function autoCenter(bool|Closure $autoCenter = true): static
     {
         $this->autoCenter = $this->evaluate($autoCenter);
+
+        return $this;
+    }
+
+    /**
+     * Set whether the map should automatically zoom to fit all markers and shapes. The $fitBounds parameter is a boolean value or a Closure that returns a boolean. When set to true, the map will automatically adjust its zoom level and center to display all visible layers (markers, shapes, etc.) within the bounds. This is useful for ensuring all important elements are visible on the map without manual zoom adjustments. If set to false, the map will use the default zoom and center.
+     * @param bool|Closure $fitBounds A boolean value or a Closure that returns a boolean indicating whether the map should automatically fit all markers and shapes. If true, the map will zoom to fit all layers. If false, the map will use default zoom settings.
+     * @return $this The current instance of the class using this trait, allowing for method chaining.
+     */
+    public function fitBounds(bool|Closure $fitBounds = true): static
+    {
+        $this->fitBounds = $this->evaluate($fitBounds);
 
         return $this;
     }
@@ -171,9 +184,38 @@ trait HasMapState
      * @param bool|Closure $enabled A boolean value or a Closure that returns a boolean indicating whether the search address control should be displayed on the map. If true, the search address control will be visible. If false, it will be hidden.
      * @return $this The current instance of the class using this trait, allowing for method chaining.
      */
-    public function searchControl(bool|Closure $enabled = true): static
+    public function geoSearchControl(bool|Closure $enabled = true): static
     {
-        $this->hasSearchControl = $this->evaluate($enabled);
+        $this->hasGeoSearchControl = $this->evaluate($enabled);
+
+        return $this;
+    }
+
+    /**
+     * Set the geocoding provider to use for search queries. The $provider parameter can be an instance of the GeoSearchProvider enum, a string representing the provider, or a Closure that returns either of those. This method allows you to specify which geocoding service should be used for processing search queries in the search control on the map. By providing a valid provider, you enable the search functionality to return location results based on user input.
+     * @param GeoSearchProvider|string|Closure $provider The geocoding provider to use for search queries. This can be an instance of the GeoSearchProvider enum, a string representing the provider, or a Closure that returns either of those.
+     * @return $this The current instance of the class using this trait, allowing for method chaining.
+     */
+    public function geoSearchProvider(GeoSearchProvider|string|Closure $provider): static
+    {
+        $provider = $this->evaluate($provider);
+
+        $this->geoSearchProvider = $provider instanceof GeoSearchProvider
+            ? $provider
+            : GeoSearchProvider::from($provider);
+
+        return $this;
+    }
+
+    /**
+     * Set the API key for the geocoding provider used in the search control. The $apiKey parameter
+     * is a string value or a Closure that returns a string representing the API key required by the geocoding provider for performing search queries. This method allows you to provide the necessary credentials for geocoding services, enabling the search functionality on the map when using providers that require an API key.
+     * @param string|Closure $apiKey The API key for the geocoding provider. This can be a string value or a Closure that returns a string.
+     * @return $this The current instance of the class using this trait, allowing for method chaining.
+     */
+    public function geoSearchApiKey(string|Closure $apiKey): static
+    {
+        $this->geoSearchApiKey = $this->evaluate($apiKey);
 
         return $this;
     }

@@ -1,6 +1,6 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support\Shapes;
+namespace EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes;
 
 use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;

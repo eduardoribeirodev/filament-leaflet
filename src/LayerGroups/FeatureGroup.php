@@ -1,10 +1,10 @@
 <?php
 
-namespace EduardoRibeiroDev\FilamentLeaflet\Support\Groups;
+namespace EduardoRibeiroDev\FilamentLeaflet\LayerGroups;
 
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasFillColor;
-use EduardoRibeiroDev\FilamentLeaflet\Support\BaseLayerGroup;
-use EduardoRibeiroDev\FilamentLeaflet\Support\Shapes\Polygon;
+use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\BaseLayerGroup;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Polygon;
 use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasPath;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 
