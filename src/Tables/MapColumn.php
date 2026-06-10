@@ -36,11 +36,6 @@ class MapColumn extends Column
         return [];
     }
 
-    public function getWidth(): ?string
-    {
-        return parent::getWidth();
-    }
-
     protected function setUp(): void
     {
         parent::setUp();

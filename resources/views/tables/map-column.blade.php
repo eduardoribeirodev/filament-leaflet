@@ -5,7 +5,13 @@
 @endphp
 
 <div 
-    style="padding: 5px;"
+    style="
+        :root {
+            --max-dimension: max({{ $config['mapHeight'] }}px, {{ $getWidth() }});
+        };
+
+        padding: 5px;
+    "
     wire:key="{{ $config['mapId'] }}"
 >
     @if (!$state && $placeholder)
@@ -19,8 +25,8 @@
             @style([
                 'border-radius: 50%' => $getIsCircular(),
                 'width: ' . $getWidth() => !$getIsCircular(),
-                'width: max(' . $getWidth() . ',' . $config['mapHeight'] . 'px)' => $getIsCircular(),
-                'height: max(' . $getWidth() . ',' . $config['mapHeight'] . 'px)' => $getIsCircular(),
+                'width: var(--max-dimension)' => $getIsCircular(),
+                'height: var(--max-dimension)' => $getIsCircular(),
             ])
         />
     @endif
