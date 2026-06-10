@@ -19,19 +19,20 @@ trait HasMapState
         getMapCenter as getParentMapCenter;
     }
 
-    protected array $geoJsonData = [];
-    protected ?string $geoJsonTooltip = null;
-    protected array $markers = [];
-    protected array $shapes = [];
+    protected array|Closure $geoJsonData = [];
+    protected string|Closure|null $geoJsonTooltip = null;
+    protected array|Closure $markers = [];
+    protected array|Closure $shapes = [];
 
-    protected ?Marker $pickMarker = null;
+    protected Marker|Closure|null $pickMarker = null;
+    protected Marker|Closure|null $defaultPickMarker = null;
     protected ?Closure $onMapClickCallback = null;
     protected ?Closure $onLayerClickCallback = null;
 
 
 
     /**
-     * Set the center of the map. The center can be defined using either a single parameter that is an array of [latitude, longitude] or by providing latitude and longitude as separate parameters. The method will evaluate the provided parameters, allowing for dynamic values using Closures. If the center is set using separate latitude and longitude parameters, both must be provided; otherwise, an exception will be thrown.
+     * Set the center of the map. The center can be defined using either a single parameter that is an array of [latitude, longitude] or by providing latitude and longitude as separate parameters. The method will store the provided parameters and evaluate them later when the map center is requested.
      * @param float|array|Closure $latitudeOrCoordinates The latitude for the map's center or an array containing both latitude and longitude. This can also be a Closure that returns either a float (latitude) or an array of [latitude, longitude].
      * @param float|Closure|null $longitude The longitude for the map's center. This parameter is required if the first parameter is a float representing latitude. It can also be a Closure that returns a float (longitude). If the first parameter is an array of coordinates, this parameter should be null.
      * @return $this The current instance of the class using this trait, allowing for method chaining.
@@ -39,20 +40,31 @@ trait HasMapState
      */
     public function center(float|array|Closure $latitudeOrCoordinates, null|float|Closure $longitude = null): static
     {
-        $latitudeOrCoordinates = $this->evaluate($latitudeOrCoordinates);
+        if ($latitudeOrCoordinates instanceof Closure && $longitude === null) {
+            $this->mapCenter = $latitudeOrCoordinates;
+
+            return $this;
+        }
 
         if (is_array($latitudeOrCoordinates)) {
             $this->mapCenter = $latitudeOrCoordinates;
-        } else {
-            if ($longitude === null) {
-                throw new \InvalidArgumentException('Longitude must be provided when using latitude and longitude as separate parameters.');
-            }
 
-            $this->mapCenter = [
-                $latitudeOrCoordinates,
-                $this->evaluate($longitude),
-            ];
+            return $this;
         }
+
+        if ($longitude === null) {
+            throw new \InvalidArgumentException('Longitude must be provided when using latitude and longitude as separate parameters.');
+        }
+
+        $this->mapCenter = $longitude instanceof Closure
+            ? fn() => [
+                $this->evaluate($latitudeOrCoordinates),
+                $this->evaluate($longitude),
+            ]
+            : [
+                $latitudeOrCoordinates,
+                $longitude,
+            ];
 
         return $this;
     }
@@ -64,19 +76,19 @@ trait HasMapState
      */
     public function autoCenter(bool|Closure $autoCenter = true): static
     {
-        $this->autoCenter = $this->evaluate($autoCenter);
+        $this->autoCenter = $autoCenter;
 
         return $this;
     }
 
     /**
      * Set whether the map should automatically zoom to fit all markers and shapes. The $fitBounds parameter is a boolean value or a Closure that returns a boolean. When set to true, the map will automatically adjust its zoom level and center to display all visible layers (markers, shapes, etc.) within the bounds. This is useful for ensuring all important elements are visible on the map without manual zoom adjustments. If set to false, the map will use the default zoom and center.
-     * @param bool|Closure $fitBounds A boolean value or a Closure that returns a boolean indicating whether the map should automatically fit all markers and shapes. If true, the map will zoom to fit all layers. If false, the map will use default zoom settings.
+     * @param bool|Closure $fitBounds A boolean value or a Closure that returns a boolean indicating whether the map should automatically fit all markers and shapes. If true, the map will zoom to fit all layers. If false, it will use default zoom settings.
      * @return $this The current instance of the class using this trait, allowing for method chaining.
      */
     public function fitBounds(bool|Closure $fitBounds = true): static
     {
-        $this->fitBounds = $this->evaluate($fitBounds);
+        $this->fitBounds = $fitBounds;
 
         return $this;
     }
@@ -88,7 +100,7 @@ trait HasMapState
      */
     public function height(int|Closure $height): static
     {
-        $this->mapHeight = $this->evaluate($height);
+        $this->mapHeight = $height;
 
         return $this;
     }
@@ -100,7 +112,7 @@ trait HasMapState
      */
     public function mapDraggable(bool|Closure $draggable = true): static
     {
-        $this->mapDraggable = $this->evaluate($draggable);
+        $this->mapDraggable = $draggable;
 
         return $this;
     }
@@ -112,7 +124,7 @@ trait HasMapState
      */
     public function mapZoomable(bool|Closure $zoomable = true): static
     {
-        $this->mapZoomable = $this->evaluate($zoomable);
+        $this->mapZoomable = $zoomable;
 
         return $this;
     }
@@ -124,9 +136,15 @@ trait HasMapState
      */
     public function static(bool|Closure $isStatic = true): static
     {
-        $isStatic = $this->evaluate($isStatic);
-        $this->mapDraggable(!$isStatic);
-        $this->mapZoomable(!$isStatic);
+        if ($isStatic instanceof Closure) {
+            $this->mapDraggable = fn() => ! $this->evaluate($isStatic);
+            $this->mapZoomable = fn() => ! $this->evaluate($isStatic);
+
+            return $this;
+        }
+
+        $this->mapDraggable = ! $isStatic;
+        $this->mapZoomable = ! $isStatic;
 
         return $this;
     }
@@ -138,7 +156,7 @@ trait HasMapState
      */
     public function recenterTimeout(null|int|Closure $milliseconds): static
     {
-        $this->recenterMapTimeout = $this->evaluate($milliseconds);
+        $this->recenterMapTimeout = $milliseconds;
 
         return $this;
     }
@@ -150,7 +168,7 @@ trait HasMapState
      */
     public function zoom(int|Closure $zoomLevel): static
     {
-        $this->defaultZoom = $this->evaluate($zoomLevel);
+        $this->defaultZoom = $zoomLevel;
 
         return $this;
     }
@@ -162,7 +180,7 @@ trait HasMapState
      */
     public function attributionControl(bool|Closure $enabled = true): static
     {
-        $this->hasAttributionControl = $this->evaluate($enabled);
+        $this->hasAttributionControl = $enabled;
 
         return $this;
     }
@@ -174,7 +192,7 @@ trait HasMapState
      */
     public function fullscreenControl(bool|Closure $enabled = true): static
     {
-        $this->hasFullscreenControl = $this->evaluate($enabled);
+        $this->hasFullscreenControl = $enabled;
 
         return $this;
     }
@@ -186,7 +204,7 @@ trait HasMapState
      */
     public function geoSearchControl(bool|Closure $enabled = true): static
     {
-        $this->hasGeoSearchControl = $this->evaluate($enabled);
+        $this->hasGeoSearchControl = $enabled;
 
         return $this;
     }
@@ -198,11 +216,7 @@ trait HasMapState
      */
     public function geoSearchProvider(GeoSearchProvider|string|Closure $provider): static
     {
-        $provider = $this->evaluate($provider);
-
-        $this->geoSearchProvider = $provider instanceof GeoSearchProvider
-            ? $provider
-            : GeoSearchProvider::from($provider);
+        $this->geoSearchProvider = $provider;
 
         return $this;
     }
@@ -215,7 +229,7 @@ trait HasMapState
      */
     public function geoSearchApiKey(string|Closure $apiKey): static
     {
-        $this->geoSearchApiKey = $this->evaluate($apiKey);
+        $this->geoSearchApiKey = $apiKey;
 
         return $this;
     }
@@ -227,7 +241,7 @@ trait HasMapState
      */
     public function scaleControl(bool|Closure $enabled = true): static
     {
-        $this->hasScaleControl = $this->evaluate($enabled);
+        $this->hasScaleControl = $enabled;
 
         return $this;
     }
@@ -239,7 +253,7 @@ trait HasMapState
      */
     public function zoomControl(bool|Closure $enabled = true): static
     {
-        $this->hasZoomControl = $this->evaluate($enabled);
+        $this->hasZoomControl = $enabled;
 
         return $this;
     }
@@ -251,7 +265,7 @@ trait HasMapState
      */
     public function drawMarkerControl(bool|Closure $enabled = true): static
     {
-        $this->hasDrawMarkerControl = $this->evaluate($enabled);
+        $this->hasDrawMarkerControl = $enabled;
 
         return $this;
     }
@@ -263,7 +277,7 @@ trait HasMapState
      */
     public function drawCircleMarkerControl(bool|Closure $enabled = true): static
     {
-        $this->hasDrawCircleMarkerControl = $this->evaluate($enabled);
+        $this->hasDrawCircleMarkerControl = $enabled;
 
         return $this;
     }
@@ -275,7 +289,7 @@ trait HasMapState
      */
     public function drawCircleControl(bool|Closure $enabled = true): static
     {
-        $this->hasDrawCircleControl = $this->evaluate($enabled);
+        $this->hasDrawCircleControl = $enabled;
 
         return $this;
     }
@@ -287,7 +301,7 @@ trait HasMapState
      */
     public function drawPolylineControl(bool|Closure $enabled = true): static
     {
-        $this->hasDrawPolylineControl = $this->evaluate($enabled);
+        $this->hasDrawPolylineControl = $enabled;
 
         return $this;
     }
@@ -299,7 +313,7 @@ trait HasMapState
      */
     public function drawRectangleControl(bool|Closure $enabled = true): static
     {
-        $this->hasDrawRectangleControl = $this->evaluate($enabled);
+        $this->hasDrawRectangleControl = $enabled;
 
         return $this;
     }
@@ -311,7 +325,7 @@ trait HasMapState
      */
     public function drawPolygonControl(bool|Closure $enabled = true): static
     {
-        $this->hasDrawPolygonControl = $this->evaluate($enabled);
+        $this->hasDrawPolygonControl = $enabled;
 
         return $this;
     }
@@ -323,7 +337,7 @@ trait HasMapState
      */
     public function drawTextControl(bool|Closure $enabled = true): static
     {
-        $this->hasDrawTextControl = $this->evaluate($enabled);
+        $this->hasDrawTextControl = $enabled;
 
         return $this;
     }
@@ -335,7 +349,7 @@ trait HasMapState
      */
     public function editLayersControl(bool|Closure $enabled = true): static
     {
-        $this->hasEditLayersControl = $this->evaluate($enabled);
+        $this->hasEditLayersControl = $enabled;
 
         return $this;
     }
@@ -347,7 +361,7 @@ trait HasMapState
      */
     public function dragLayersControl(bool|Closure $enabled = true): static
     {
-        $this->hasDragLayersControl = $this->evaluate($enabled);
+        $this->hasDragLayersControl = $enabled;
 
         return $this;
     }
@@ -359,7 +373,7 @@ trait HasMapState
      */
     public function removeLayersControl(bool|Closure $enabled = true): static
     {
-        $this->hasRemoveLayersControl = $this->evaluate($enabled);
+        $this->hasRemoveLayersControl = $enabled;
 
         return $this;
     }
@@ -371,7 +385,7 @@ trait HasMapState
      */
     public function rotateLayersControl(bool|Closure $enabled = true): static
     {
-        $this->hasRotateLayersControl = $this->evaluate($enabled);
+        $this->hasRotateLayersControl = $enabled;
 
         return $this;
     }
@@ -383,7 +397,7 @@ trait HasMapState
      */
     public function cutPolygonControl(bool|Closure $enabled = true): static
     {
-        $this->hasCutPolygonControl = $this->evaluate($enabled);
+        $this->hasCutPolygonControl = $enabled;
 
         return $this;
     }
@@ -395,7 +409,7 @@ trait HasMapState
      */
     public function tileLayersUrl(TileLayer|Closure|string|array $urls): static
     {
-        $this->tileLayersUrl = $this->evaluate($urls);
+        $this->tileLayersUrl = $urls;
 
         return $this;
     }
@@ -407,7 +421,7 @@ trait HasMapState
      */
     public function minZoom(int|Closure $minZoom): static
     {
-        $this->minZoom = $this->evaluate($minZoom);
+        $this->minZoom = $minZoom;
 
         return $this;
     }
@@ -419,7 +433,7 @@ trait HasMapState
      */
     public function maxZoom(int|Closure $maxZoom): static
     {
-        $this->maxZoom = $this->evaluate($maxZoom);
+        $this->maxZoom = $maxZoom;
 
         return $this;
     }
@@ -431,7 +445,7 @@ trait HasMapState
      */
     public function geoJsonUrl(string|Closure $url): static
     {
-        $this->geoJsonUrl = $this->evaluate($url);
+        $this->geoJsonUrl = $url;
 
         return $this;
     }
@@ -443,7 +457,7 @@ trait HasMapState
      */
     public function geoJsonData(array|Closure $data): static
     {
-        $this->geoJsonData = $this->evaluate($data);
+        $this->geoJsonData = $data;
 
         return $this;
     }
@@ -455,7 +469,7 @@ trait HasMapState
      */
     public function geoJsonColors(array|Closure $colors): static
     {
-        $this->geoJsonColors = $this->evaluate($colors);
+        $this->geoJsonColors = $colors;
 
         return $this;
     }
@@ -467,7 +481,7 @@ trait HasMapState
      */
     public function geoJsonTooltip(string|Closure|null $tooltip): static
     {
-        $this->geoJsonTooltip = $this->evaluate($tooltip);
+        $this->geoJsonTooltip = $tooltip;
 
         return $this;
     }
@@ -479,7 +493,7 @@ trait HasMapState
      */
     public function markers(array|Closure $markers): static
     {
-        $this->markers = $this->evaluate($markers);
+        $this->markers = $markers;
 
         return $this;
     }
@@ -491,7 +505,7 @@ trait HasMapState
      */
     public function shapes(array|Closure $shapes): static
     {
-        $this->shapes = $this->evaluate($shapes);
+        $this->shapes = $shapes;
 
         return $this;
     }
@@ -503,9 +517,19 @@ trait HasMapState
      */
     public function pickMarker(Marker|Closure|null $marker)
     {
-        $this->pickMarker = $this->evaluate($marker, [
-            'marker' => $this->pickMarker ?? new Marker
-        ]);
+        $this->pickMarker = $marker;
+
+        return $this;
+    }
+
+    /**
+     * Set the default marker to be picked on the map. The $marker parameter can be a Marker instance or a Closure that returns a Marker instance. This method allows you to define a default marker that will be picked on the map when no specific marker is selected, providing a fallback option for marker selection.
+     * @param Marker|Closure|null $marker A Marker instance or a Closure that returns a Marker instance.
+     * @return $this The current instance of the class using this trait, allowing for method chaining.
+     */
+    public function defaultPickMarker(Marker|Closure|null $marker)
+    {
+        $this->defaultPickMarker = $marker;
 
         return $this;
     }
@@ -538,16 +562,16 @@ trait HasMapState
 
     function getPickMarkerData(): array
     {
-        $pickMarker = null;
+        $pickMarker = $this->evaluate($this->defaultPickMarker) ?? new Marker;
 
-        if ($this->pickMarker) {
-            $pickMarker = $this->pickMarker;
-        } else {
-            $pickMarker = new Marker;
+        if ($this->isDisabled()) {
+            $pickMarker->gray();
+        }
 
-            if ($this->isDisabled()) {
-                $pickMarker->gray();
-            }
+        if ($this->pickMarker !== null) {
+            $pickMarker = $this->evaluate($this->pickMarker, [
+                'marker' => $pickMarker
+            ]);
         }
 
         return $pickMarker->toArray();
@@ -573,18 +597,18 @@ trait HasMapState
 
     protected function getMarkers(): array
     {
-        return $this->markers;
+        return $this->evaluate($this->markers) ?? [];
     }
 
     protected function getShapes(): array
     {
-        return $this->shapes;
+        return $this->evaluate($this->shapes) ?? [];
     }
 
     protected function getGeoJsonTooltip(): string
     {
-        if ($this->geoJsonTooltip) {
-            return $this->geoJsonTooltip;
+        if ($this->geoJsonTooltip !== null) {
+            return $this->evaluate($this->geoJsonTooltip);
         }
 
         return $this->getParentGeoJsonTooltip();
@@ -592,8 +616,8 @@ trait HasMapState
 
     protected function getGeoJsonUrl(): ?string
     {
-        if ($this->geoJsonUrl) {
-            return $this->geoJsonUrl;
+        if ($this->geoJsonUrl !== null) {
+            return $this->evaluate($this->geoJsonUrl);
         }
 
         $record = $this->getRecord();

@@ -2,6 +2,7 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet\Concerns;
 
+use Closure;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\GeoSearchProvider;
 use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
 use EduardoRibeiroDev\FilamentLeaflet\Layers\BaseLayer;
@@ -14,48 +15,48 @@ use Livewire\Attributes\On;
 trait HasMapConfig
 {
     // Configurações padrão do mapa
-    protected ?array $mapCenter = null;
-    protected bool $autoCenter = false;
-    protected bool $fitBounds = false;
-    protected int $defaultZoom = 4;
-    protected int $mapHeight = 598;
-    protected ?int $recenterMapTimeout = null;
-    protected bool $mapDraggable = true;
-    protected bool $mapZoomable = true;
+    protected array|Closure|null $mapCenter = null;
+    protected bool|Closure $autoCenter = false;
+    protected bool|Closure $fitBounds = false;
+    protected int|Closure $defaultZoom = 4;
+    protected int|Closure $mapHeight = 598;
+    protected int|Closure|null $recenterMapTimeout = null;
+    protected bool|Closure $mapDraggable = true;
+    protected bool|Closure $mapZoomable = true;
 
     // Configurações de controles
-    protected bool $hasAttributionControl = false;
-    protected bool $hasFullscreenControl = false;
-    protected bool $hasScaleControl = false;
-    protected bool $hasZoomControl = true;
+    protected bool|Closure $hasAttributionControl = false;
+    protected bool|Closure $hasFullscreenControl = false;
+    protected bool|Closure $hasScaleControl = false;
+    protected bool|Closure $hasZoomControl = true;
 
     // Configurações de GeoSearch
-    protected bool $hasGeoSearchControl = false;
-    protected GeoSearchProvider $geoSearchProvider = GeoSearchProvider::Nominatim;
-    protected ?string $geoSearchApiKey = null;
+    protected bool|Closure $hasGeoSearchControl = false;
+    protected GeoSearchProvider|string|Closure $geoSearchProvider = GeoSearchProvider::Nominatim;
+    protected string|Closure|null $geoSearchApiKey = null;
 
     // Controles do Geoman
-    protected bool $hasDrawMarkerControl = false;
-    protected bool $hasDrawCircleMarkerControl = false;
-    protected bool $hasDrawCircleControl = false;
-    protected bool $hasDrawPolylineControl = false;
-    protected bool $hasDrawRectangleControl = false;
-    protected bool $hasDrawPolygonControl = false;
-    protected bool $hasDrawTextControl = false;
-    protected bool $hasEditLayersControl = false;
-    protected bool $hasDragLayersControl = false;
-    protected bool $hasRemoveLayersControl = false;
-    protected bool $hasRotateLayersControl = false;
-    protected bool $hasCutPolygonControl = false;
+    protected bool|Closure $hasDrawMarkerControl = false;
+    protected bool|Closure $hasDrawCircleMarkerControl = false;
+    protected bool|Closure $hasDrawCircleControl = false;
+    protected bool|Closure $hasDrawPolylineControl = false;
+    protected bool|Closure $hasDrawRectangleControl = false;
+    protected bool|Closure $hasDrawPolygonControl = false;
+    protected bool|Closure $hasDrawTextControl = false;
+    protected bool|Closure $hasEditLayersControl = false;
+    protected bool|Closure $hasDragLayersControl = false;
+    protected bool|Closure $hasRemoveLayersControl = false;
+    protected bool|Closure $hasRotateLayersControl = false;
+    protected bool|Closure $hasCutPolygonControl = false;
 
-    protected int $maxZoom = 19;
-    protected int $minZoom = 2;
+    protected int|Closure $maxZoom = 19;
+    protected int|Closure $minZoom = 2;
 
-    protected TileLayer|string|array $tileLayersUrl = TileLayer::OpenStreetMap;
+    protected TileLayer|string|array|Closure $tileLayersUrl = TileLayer::OpenStreetMap;
 
     // Configurações do GeoJSON Density
-    protected ?string $geoJsonUrl = null;
-    protected array $geoJsonColors = [
+    protected string|Closure|null $geoJsonUrl = null;
+    protected array|Closure $geoJsonColors = [
         '#FED976',
         '#FEB24C',
         '#FD8D3C',
@@ -73,7 +74,7 @@ trait HasMapConfig
      */
     protected function getMapCenter(): array
     {
-        return $this->mapCenter ?? config('filament-leaflet.default_map_center', [0, 0]);
+        return $this->evaluate($this->mapCenter) ?? config('filament-leaflet.default_map_center', [0, 0]);
     }
 
     /**
@@ -81,7 +82,7 @@ trait HasMapConfig
      */
     protected function getAutoCenter(): bool
     {
-        return $this->autoCenter;
+        return $this->evaluate($this->autoCenter);
     }
 
     /**
@@ -89,7 +90,7 @@ trait HasMapConfig
      */
     protected function getFitBounds(): bool
     {
-        return $this->fitBounds;
+        return $this->evaluate($this->fitBounds);
     }
 
     /**
@@ -97,7 +98,7 @@ trait HasMapConfig
      */
     protected function getDefaultZoom(): int
     {
-        return $this->defaultZoom;
+        return $this->evaluate($this->defaultZoom);
     }
 
     /**
@@ -105,7 +106,7 @@ trait HasMapConfig
      */
     protected function getMapHeight(): int
     {
-        return $this->mapHeight;
+        return $this->evaluate($this->mapHeight);
     }
 
     /**
@@ -113,7 +114,7 @@ trait HasMapConfig
      */
     public function getMapDraggable(): bool
     {
-        return $this->mapDraggable;
+        return $this->evaluate($this->mapDraggable);
     }
 
     /**
@@ -121,7 +122,7 @@ trait HasMapConfig
      */
     public function getMapZoomable(): bool
     {
-        return $this->mapZoomable;
+        return $this->evaluate($this->mapZoomable);
     }
 
     /**
@@ -129,7 +130,7 @@ trait HasMapConfig
      */
     protected function hasAttributionControl(): bool
     {
-        return $this->hasAttributionControl;
+        return $this->evaluate($this->hasAttributionControl);
     }
 
     /**
@@ -137,7 +138,7 @@ trait HasMapConfig
      */
     protected function hasFullscreenControl(): bool
     {
-        return $this->hasFullscreenControl;
+        return $this->evaluate($this->hasFullscreenControl);
     }
 
     /**
@@ -145,7 +146,7 @@ trait HasMapConfig
      */
     protected function hasGeoSearchControl(): bool
     {
-        return $this->hasGeoSearchControl;
+        return $this->evaluate($this->hasGeoSearchControl);
     }
 
     /**
@@ -153,7 +154,11 @@ trait HasMapConfig
      */
     protected function getGeoSearchProvider(): GeoSearchProvider
     {
-        return $this->geoSearchProvider;
+        $geoSearchProvider = $this->evaluate($this->geoSearchProvider);
+
+        return $geoSearchProvider instanceof GeoSearchProvider
+            ? $geoSearchProvider
+            : GeoSearchProvider::from($geoSearchProvider);
     }
 
     /**
@@ -161,11 +166,12 @@ trait HasMapConfig
      */
     protected function getGeoSearchApiKey(): ?string
     {
-        if ($this->geoSearchApiKey) {
-            return $this->geoSearchApiKey;
+        if ($this->geoSearchApiKey !== null) {
+            return $this->evaluate($this->geoSearchApiKey);
         }
 
-        $envVariable = $this->geoSearchProvider->getApiKeyEnvVariable();
+        $geoSearchProvider = $this->getGeoSearchProvider();
+        $envVariable = $geoSearchProvider->getApiKeyEnvVariable();
 
         if ($envVariable) {
             return env($envVariable);
@@ -179,7 +185,7 @@ trait HasMapConfig
      */
     protected function hasScaleControl(): bool
     {
-        return $this->hasScaleControl;
+        return $this->evaluate($this->hasScaleControl);
     }
 
     /**
@@ -187,7 +193,7 @@ trait HasMapConfig
      */
     protected function hasZoomControl(): bool
     {
-        return $this->hasZoomControl;
+        return $this->evaluate($this->hasZoomControl);
     }
 
     /**
@@ -195,7 +201,7 @@ trait HasMapConfig
      */
     protected function hasDrawMarkerControl(): bool
     {
-        return $this->hasDrawMarkerControl;
+        return $this->evaluate($this->hasDrawMarkerControl);
     }
 
     /**
@@ -203,7 +209,7 @@ trait HasMapConfig
      */
     protected function hasDrawCircleMarkerControl(): bool
     {
-        return $this->hasDrawCircleMarkerControl;
+        return $this->evaluate($this->hasDrawCircleMarkerControl);
     }
 
     /**
@@ -211,7 +217,7 @@ trait HasMapConfig
      */
     protected function hasDrawCircleControl(): bool
     {
-        return $this->hasDrawCircleControl;
+        return $this->evaluate($this->hasDrawCircleControl);
     }
 
     /**
@@ -219,7 +225,7 @@ trait HasMapConfig
      */
     protected function hasDrawPolylineControl(): bool
     {
-        return $this->hasDrawPolylineControl;
+        return $this->evaluate($this->hasDrawPolylineControl);
     }
 
     /**
@@ -227,7 +233,7 @@ trait HasMapConfig
      */
     protected function hasDrawRectangleControl(): bool
     {
-        return $this->hasDrawRectangleControl;
+        return $this->evaluate($this->hasDrawRectangleControl);
     }
 
     /**
@@ -235,7 +241,7 @@ trait HasMapConfig
      */
     protected function hasDrawPolygonControl(): bool
     {
-        return $this->hasDrawPolygonControl;
+        return $this->evaluate($this->hasDrawPolygonControl);
     }
 
     /**
@@ -243,7 +249,7 @@ trait HasMapConfig
      */
     protected function hasDrawTextControl(): bool
     {
-        return $this->hasDrawTextControl;
+        return $this->evaluate($this->hasDrawTextControl);
     }
 
     /**
@@ -251,7 +257,7 @@ trait HasMapConfig
      */
     protected function hasEditLayersControl(): bool
     {
-        return $this->hasEditLayersControl;
+        return $this->evaluate($this->hasEditLayersControl);
     }
 
     /**
@@ -259,7 +265,7 @@ trait HasMapConfig
      */
     protected function hasDragLayersControl(): bool
     {
-        return $this->hasDragLayersControl;
+        return $this->evaluate($this->hasDragLayersControl);
     }
 
     /**
@@ -267,7 +273,7 @@ trait HasMapConfig
      */
     protected function hasRemoveLayersControl(): bool
     {
-        return $this->hasRemoveLayersControl;
+        return $this->evaluate($this->hasRemoveLayersControl);
     }
 
     /**
@@ -275,7 +281,7 @@ trait HasMapConfig
      */
     protected function hasRotateLayersControl(): bool
     {
-        return $this->hasRotateLayersControl;
+        return $this->evaluate($this->hasRotateLayersControl);
     }
 
     /**
@@ -283,7 +289,7 @@ trait HasMapConfig
      */
     protected function hasCutPolygonControl(): bool
     {
-        return $this->hasCutPolygonControl;
+        return $this->evaluate($this->hasCutPolygonControl);
     }
 
     /**
@@ -291,7 +297,7 @@ trait HasMapConfig
      */
     public function getRecenterMapTimeout(): ?int
     {
-        return $this->recenterMapTimeout;
+        return $this->evaluate($this->recenterMapTimeout);
     }
 
     /**
@@ -299,7 +305,7 @@ trait HasMapConfig
      */
     protected function getTileLayersUrl(): TileLayer|string|array
     {
-        return $this->tileLayersUrl;
+        return $this->evaluate($this->tileLayersUrl);
     }
 
     /**
@@ -308,8 +314,8 @@ trait HasMapConfig
     protected final function getZoomOptions(): array
     {
         return [
-            'max' => $this->maxZoom,
-            'min' => $this->minZoom,
+            'max' => $this->evaluate($this->maxZoom),
+            'min' => $this->evaluate($this->minZoom),
         ];
     }
 

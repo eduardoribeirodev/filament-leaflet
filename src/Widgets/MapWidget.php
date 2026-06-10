@@ -22,12 +22,14 @@ use Exception;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Concerns\EvaluatesClosures;
 use Illuminate\Contracts\View\View;
 
 abstract class MapWidget extends Widget implements HasSchemas, HasActions
 {
     use InteractsWithSchemas;
     use InteractsWithActions;
+    use EvaluatesClosures;
     use HasMapConfig {
         handleLayerClick as private handleMapLayerClick;
     }

@@ -9,23 +9,20 @@ use Filament\Tables\Columns\Column;
 
 class MapColumn extends Column
 {
-    use HasMapState {
-        getMapHeight as getParentMapHeight;
-        getCustomStyles as getParentCustomStyles;
-    }
+    use HasMapState;
 
     protected string $view = 'filament-leaflet::tables.map-column';
-    protected bool $isCircular = false;
+    protected Closure|bool $isCircular = false;
 
     public function circular(Closure|bool $value = true): static
     {
-        $this->isCircular = (bool) $this->evaluate($value);
+        $this->isCircular = $value;
         return $this;
     }
 
     public function getIsCircular(): bool
     {
-        return $this->isCircular;
+        return (bool) $this->evaluate($this->isCircular);
     }
 
     public function getId()
@@ -41,47 +38,17 @@ class MapColumn extends Column
 
     public function getWidth(): ?string
     {
-        $parentWidth = $this->evaluate($this->width);
-        $parentHeight = $this->getParentMapHeight() + 10; // por algum motivo para a proporção 1:1 a largura precisa ser 10px maior que a altura
-
-        if ($this->isCircular && $parentHeight < $parentWidth) {
-            $this->width($parentHeight);
-        }
-
         return parent::getWidth();
-    }
-
-    protected function getMapHeight(): int
-    {
-        $parentWidth = $this->evaluate($this->width) - 10; // por algum motivo para a proporção 1:1 a largura precisa ser 10px maior que a altura
-        $parentHeight = $this->getParentMapHeight();
-
-        if ($this->isCircular && $parentWidth < $parentHeight) {
-            $this->height($parentWidth);
-        }
-
-        return $this->getParentMapHeight();
-    }
-
-    public function getCustomStyles(): string
-    {
-        $styles = $this->getParentCustomStyles();
-
-        if ($this->isCircular) {
-            $styles .= ".fi-ta-col .leaflet-container { border-radius: 50%; }";
-        }
-
-        return $styles;
     }
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->height(72);
-        $this->width(108);
+        $this->height(86);
+        $this->width(86);
         $this->zoom(5);
         $this->recenterTimeout(5000);
         $this->minZoom(0);
-        $this->pickMarker(fn(Marker $marker) => $marker->icon(size: [14, 25]));
+        $this->defaultPickMarker(Marker::make()->icon(size: [14, 25]));
     }
 }

@@ -6,17 +6,17 @@ use Closure;
 
 trait HasPath
 {
-    protected ?int $weight = null;
-    protected ?float $smoothFactor = null;
-    protected ?array $dashArray = null;
-    protected ?string $dashOffset = null;
-    protected ?bool $stroke = true;
-    protected ?string $lineCap = null;
-    protected ?string $lineJoin = null;
-    protected ?bool $fill = true;
-    protected ?string $fillRule = null;
-    protected ?bool $noClip = null;
-    protected ?bool $bubblingMouseEvents = null;
+    protected null|Closure|int $weight = null;
+    protected null|Closure|float $smoothFactor = null;
+    protected null|Closure|array $dashArray = null;
+    protected null|Closure|string $dashOffset = null;
+    protected null|Closure|bool $stroke = true;
+    protected null|Closure|string $lineCap = null;
+    protected null|Closure|string $lineJoin = null;
+    protected null|Closure|bool $fill = true;
+    protected null|Closure|string $fillRule = null;
+    protected null|Closure|bool $noClip = null;
+    protected null|Closure|bool $bubblingMouseEvents = null;
 
     /**
      * Set the weight (thickness) of the shape's border.
@@ -25,7 +25,7 @@ trait HasPath
      */
     public function weight(null|Closure|int $weight): static
     {
-        $this->weight = $this->evaluate($weight);
+        $this->weight = $weight;
         return $this;
     }
 
@@ -35,7 +35,7 @@ trait HasPath
      */
     public function getWeight(): ?int
     {
-        return $this->weight;
+        return $this->evaluate($this->weight);
     }
 
     /**
@@ -45,7 +45,7 @@ trait HasPath
      */
     public function smoothFactor(null|Closure|float $smoothFactor): static
     {
-        $this->smoothFactor = $this->evaluate($smoothFactor);
+        $this->smoothFactor = $smoothFactor;
         return $this;
     }
 
@@ -55,7 +55,7 @@ trait HasPath
      */
     public function getSmoothFactor(): ?float
     {
-        return $this->smoothFactor;
+        return $this->evaluate($this->smoothFactor);
     }
 
     /**
@@ -67,7 +67,7 @@ trait HasPath
      */
     public function dashArray(null|Closure|int|string ...$dashArray): static
     {
-        $this->dashArray = array_map(fn($dash) => $this->evaluate($dash), $dashArray);
+        $this->dashArray = $dashArray;
         return $this;
     }
 
@@ -77,7 +77,12 @@ trait HasPath
      */
     public function getDashArray(): ?array
     {
-        return $this->dashArray;
+        $arr = $this->dashArray;
+        if ($arr === null) {
+            return null;
+        }
+
+        return array_map(fn($dash) => $this->evaluate($dash), $arr);
     }
 
     /**
@@ -88,7 +93,7 @@ trait HasPath
      */
     public function dashOffset(null|Closure|string $dashOffset): static
     {
-        $this->dashOffset = $this->evaluate($dashOffset);
+        $this->dashOffset = $dashOffset;
         return $this;
     }
 
@@ -98,7 +103,7 @@ trait HasPath
      */
     public function getDashOffset(): ?string
     {
-        return $this->dashOffset;
+        return $this->evaluate($this->dashOffset);
     }
 
     /**
@@ -108,7 +113,7 @@ trait HasPath
      */
     public function stroke(null|Closure|bool $stroke = true): static
     {
-        $this->stroke = $this->evaluate($stroke);
+        $this->stroke = $stroke;
         return $this;
     }
 
@@ -118,7 +123,7 @@ trait HasPath
      */
     public function getStroke(): ?bool
     {
-        return $this->stroke;
+        return $this->evaluate($this->stroke);
     }
 
     /**
@@ -128,7 +133,7 @@ trait HasPath
      */
     public function lineCap(null|Closure|string $lineCap): static
     {
-        $this->lineCap = $this->evaluate($lineCap);
+        $this->lineCap = $lineCap;
         return $this;
     }
 
@@ -138,7 +143,7 @@ trait HasPath
      */
     public function getLineCap(): ?string
     {
-        return $this->lineCap;
+        return $this->evaluate($this->lineCap);
     }
 
     /**
@@ -148,7 +153,7 @@ trait HasPath
      */
     public function lineJoin(null|Closure|string $lineJoin): static
     {
-        $this->lineJoin = $this->evaluate($lineJoin);
+        $this->lineJoin = $lineJoin;
         return $this;
     }
 
@@ -158,7 +163,7 @@ trait HasPath
      */
     public function getLineJoin(): ?string
     {
-        return $this->lineJoin;
+        return $this->evaluate($this->lineJoin);
     }
 
     /**
@@ -168,7 +173,7 @@ trait HasPath
      */
     public function fill(null|Closure|bool $fill = true): static
     {
-        $this->fill = $this->evaluate($fill);
+        $this->fill = $fill;
         return $this;
     }
 
@@ -178,7 +183,7 @@ trait HasPath
      */
     public function getFill(): ?bool
     {
-        return $this->fill;
+        return $this->evaluate($this->fill);
     }
 
     /**
@@ -189,7 +194,7 @@ trait HasPath
      */
     public function fillRule(null|Closure|string $fillRule): static
     {
-        $this->fillRule = $this->evaluate($fillRule);
+        $this->fillRule = $fillRule;
         return $this;
     }
 
@@ -199,7 +204,7 @@ trait HasPath
      */
     public function getFillRule(): ?string
     {
-        return $this->fillRule;
+        return $this->evaluate($this->fillRule);
     }
 
     /**
@@ -209,7 +214,7 @@ trait HasPath
      */
     public function noClip(null|Closure|bool $noClip = true): static
     {
-        $this->noClip = $this->evaluate($noClip);
+        $this->noClip = $noClip;
         return $this;
     }
 
@@ -219,6 +224,6 @@ trait HasPath
      */
     public function getNoClip(): ?bool
     {
-        return $this->noClip;
+        return $this->evaluate($this->noClip);
     }
 }

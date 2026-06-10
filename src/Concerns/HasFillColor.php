@@ -7,8 +7,8 @@ use Filament\Support\Colors\Color;
 
 trait HasFillColor
 {
-    protected null|string|array $fillColor = null;
-    protected ?float $fillOpacity = null;
+    protected null|Closure|string|array $fillColor = null;
+    protected null|Closure|float $fillOpacity = null;
 
     /**
      * Set the fill color of the layer.
@@ -20,7 +20,7 @@ trait HasFillColor
      */
     public function fillColor(null|string|Closure|array $color): static
     {
-        $this->fillColor = $this->evaluate($color);
+        $this->fillColor = $color;
         return $this;
     }
 
@@ -129,7 +129,7 @@ trait HasFillColor
      */
     public function fillOpacity(null|Closure|float $opacity)
     {
-        $this->fillOpacity = $this->evaluate($opacity);
+        $this->fillOpacity = $opacity;
         return $this;
     }
 
@@ -141,7 +141,7 @@ trait HasFillColor
 
     public function getFillColor(): string|array
     {
-        return $this->fillColor ?? $this->getDefaultFillColor();
+        return $this->evaluate($this->fillColor) ?? $this->getDefaultFillColor();
     }
 
     public function getRgbFillColor(?int $tone): string
@@ -164,7 +164,7 @@ trait HasFillColor
 
     public function getFillOpacity(): float
     {
-        return $this->fillOpacity ?? $this->getDefaultFillOpacity();
+        return $this->evaluate($this->fillOpacity) ?? $this->getDefaultFillOpacity();
     }
 
     public function getDefaultFillOpacity(): float

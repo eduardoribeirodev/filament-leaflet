@@ -8,6 +8,8 @@ final class Address implements Arrayable
 {
     public function __construct(
         public readonly ?string $suburb,
+        public readonly ?string $street,
+        public readonly ?string $houseNumber,
         public readonly ?string $cityDistrict,
         public readonly ?string $city,
         public readonly ?string $county,
@@ -22,6 +24,8 @@ final class Address implements Arrayable
     public function toArray(): array
     {
         return [
+            'street' => $this->street,
+            'house_number' => $this->houseNumber,
             'suburb' => $this->suburb,
             'city_district' => $this->cityDistrict,
             'city' => $this->city,
@@ -37,7 +41,7 @@ final class Address implements Arrayable
 
     public static function fromArray(array $data): self
     {
-        $extractColumns = function(string|array $columns) use ($data) {
+        $getDataAttribute = function(string|array $columns) use ($data) {
             $columns = (array) $columns;
 
             foreach ($columns as $column) {
@@ -50,16 +54,18 @@ final class Address implements Arrayable
         };
 
         return new static(
-            suburb:       $extractColumns('suburb'),
-            cityDistrict: $extractColumns('city_district'),
-            city:         $extractColumns(['city', 'town', 'village']),
-            county:       $extractColumns('county'),
-            state:        $extractColumns('state'),
-            province:     $extractColumns('province'),
-            region:       $extractColumns('region'),
-            postcode:     $extractColumns('postcode'),
-            country:      $extractColumns('country'),
-            countryCode:  $extractColumns('country_code')
+            suburb:       $getDataAttribute('suburb'),
+            street:       $getDataAttribute(['road', 'route', 'street', 'text', 'addressLine']),
+            houseNumber:  $getDataAttribute(['house_number', 'street_number', 'address', 'number']),
+            cityDistrict: $getDataAttribute('city_district'),
+            city:         $getDataAttribute(['city', 'town', 'village']),
+            county:       $getDataAttribute('county'),
+            state:        $getDataAttribute('state'),
+            province:     $getDataAttribute('province'),
+            region:       $getDataAttribute('region'),
+            postcode:     $getDataAttribute('postcode'),
+            country:      $getDataAttribute('country'),
+            countryCode:  $getDataAttribute('country_code')
         );
     }
 }

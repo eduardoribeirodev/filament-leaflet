@@ -22,7 +22,13 @@
         $wire,
         {{ Js::from($config) }},
     )"
-    style="height: {{ $config['mapHeight'] }}px; width: 100%"
+    {{
+        $attributes->style([
+            "height: {$config['mapHeight']}px",
+            "width: 100%",
+            "overflow: hidden"
+        ])
+    }}
 >
     <div id="{{ $config['mapId'] }}"></div>
 

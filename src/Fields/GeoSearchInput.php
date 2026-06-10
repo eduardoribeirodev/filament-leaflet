@@ -25,14 +25,14 @@ class GeoSearchInput extends Field
 
     protected string $view = 'filament-leaflet::fields.geo-search-input';
 
-    protected int $resultsLimit = 25;
-    protected ?GeoSearchProvider $provider = null;
-    protected ?bool $addressDetails = null;
-    protected ?string $language = null;
-    protected ?bool $bounded = null;
-    protected ?int $cacheTtl = null;
-    protected ?int $minSearchLength = null;
-    protected ?bool $useShortLabels = null;
+    protected int|Closure $resultsLimit = 25;
+    protected GeoSearchProvider|string|Closure|null $provider = null;
+    protected bool|Closure|null $addressDetails = null;
+    protected string|Closure|null $language = null;
+    protected bool|Closure|null $bounded = null;
+    protected int|Closure|null $cacheTtl = null;
+    protected int|Closure|null $minSearchLength = null;
+    protected bool|Closure|null $useShortLabels = null;
     protected bool $textMode = false;
 
     /** @var string[] */
@@ -58,13 +58,7 @@ class GeoSearchInput extends Field
      */
     public function provider(GeoSearchProvider|string|Closure $provider): static
     {
-        $provider = $this->evaluate($provider);
-        
-        if (is_string($provider)) {
-            $this->provider = GeoSearchProvider::from($provider);
-        } else {
-            $this->provider = $provider;
-        }
+        $this->provider = $provider;
 
         return $this;
     }
@@ -74,7 +68,7 @@ class GeoSearchInput extends Field
      */
     public function limit(int|Closure $limit): static
     {
-        $this->resultsLimit = (int) $this->evaluate($limit);
+        $this->resultsLimit = $limit;
         return $this;
     }
 
@@ -84,7 +78,7 @@ class GeoSearchInput extends Field
      */
     public function withAddressDetails(bool|Closure $enabled = true): static
     {
-        $this->addressDetails = (bool) $this->evaluate($enabled);
+        $this->addressDetails = $enabled;
         return $this;
     }
 
@@ -94,7 +88,7 @@ class GeoSearchInput extends Field
      */
     public function language(string|Closure $language): static
     {
-        $this->language = (string) $this->evaluate($language);
+        $this->language = $language;
         return $this;
     }
 
@@ -105,7 +99,7 @@ class GeoSearchInput extends Field
      */
     public function countryCodes(string|array|Closure $codes): static
     {
-        $this->countryCodes = (array) $this->evaluate($codes);
+        $this->countryCodes = $codes instanceof Closure ? $codes : (array) $codes;
         return $this;
     }
 
@@ -115,7 +109,7 @@ class GeoSearchInput extends Field
      */
     public function bounded(bool|Closure $bounded = true): static
     {
-        $this->bounded = (bool) $this->evaluate($bounded);
+        $this->bounded = $bounded;
         return $this;
     }
 
@@ -146,7 +140,7 @@ class GeoSearchInput extends Field
      */
     public function cacheResults(int|Closure $ttl = 3600): static
     {
-        $this->cacheTtl = (int) $this->evaluate($ttl);
+        $this->cacheTtl = $ttl;
         return $this;
     }
 
@@ -156,7 +150,7 @@ class GeoSearchInput extends Field
      */
     public function minSearchLength(int|Closure $length): static
     {
-        $this->minSearchLength = max(1, $this->evaluate($length));
+        $this->minSearchLength = $length;
         return $this;
     }
 
@@ -165,7 +159,7 @@ class GeoSearchInput extends Field
      */
     public function useShortLabels(bool|Closure $useShort = true): static
     {
-        $this->useShortLabels = (bool) $this->evaluate($useShort);
+        $this->useShortLabels = $useShort;
         return $this;
     }
 
@@ -175,44 +169,43 @@ class GeoSearchInput extends Field
      */
     public function textMode(bool|Closure $enabled = true): static
     {
-        $this->textMode = (bool) $this->evaluate($enabled);
+        $this->textMode = $enabled;
         return $this;
     }
 
     protected function buildService(): GeoSearchService
     {
         $service = app(GeoSearchService::class);
-
-        if ($this->provider !== null) {
-            $service->provider($this->provider);
+        // Evaluate configured options lazily
+        if ($provider = $this->getProvider()) {
+            $service->provider($provider);
         }
 
-        if ($this->resultsLimit !== null) {
-            $service->limit($this->resultsLimit);
+        $service->limit($this->getResultsLimit());
+
+        if (($addressDetails = $this->getAddressDetails()) !== null) {
+            $service->withAddressDetails($addressDetails);
         }
 
-        if ($this->addressDetails !== null) {
-            $service->withAddressDetails($this->addressDetails);
+        if (($bounded = $this->getBounded()) !== null) {
+            $service->bounded($bounded);
         }
 
-        if ($this->bounded !== null) {
-            $service->bounded($this->bounded);
+        if (($ttl = $this->getCacheTtl()) !== null) {
+            $service->cacheResults($ttl);
         }
 
-        if ($this->cacheTtl !== null) {
-            $service->cacheResults($this->cacheTtl);
+        if (($language = $this->getLanguage()) !== null) {
+            $service->language($language);
         }
 
-        if ($this->language !== null) {
-            $service->language($this->language);
+        $countryCodes = $this->getCountryCodes();
+        if (!empty($countryCodes)) {
+            $service->countryCodes($countryCodes);
         }
 
-        if ($this->countryCodes !== null) {
-            $service->countryCodes($this->countryCodes);
-        }
-
-        if ($this->viewbox !== null) {
-            $service->viewbox(...$this->viewbox);
+        if ($viewbox = $this->getViewbox()) {
+            $service->viewbox(...$viewbox);
         }
 
         return $service;
@@ -242,7 +235,12 @@ class GeoSearchInput extends Field
 
     public function getResultsLimit(): int
     {
-        return $this->resultsLimit;
+        return (int) $this->evaluate($this->resultsLimit);
+    }
+
+    public function getMinSearchLength(): int
+    {
+        return max(1, (int) $this->evaluate($this->minSearchLength));
     }
 
     public function getDefaultStateCasts(): array
@@ -250,5 +248,80 @@ class GeoSearchInput extends Field
         return [
             app(GeoSearchResultStateCast::class),
         ];
+    }
+
+    public function getProvider(): ?GeoSearchProvider
+    {
+        if ($this->provider === null) {
+            return null;
+        }
+
+        $provider = $this->evaluate($this->provider);
+
+        return is_string($provider) ? GeoSearchProvider::from($provider) : $provider;
+    }
+
+    public function getAddressDetails(): ?bool
+    {
+        if ($this->addressDetails === null) {
+            return null;
+        }
+
+        return (bool) $this->evaluate($this->addressDetails);
+    }
+
+    public function getLanguage(): ?string
+    {
+        if ($this->language === null) {
+            return null;
+        }
+
+        return (string) $this->evaluate($this->language);
+    }
+
+    public function getBounded(): ?bool
+    {
+        if ($this->bounded === null) {
+            return null;
+        }
+
+        return (bool) $this->evaluate($this->bounded);
+    }
+
+    public function getCacheTtl(): ?int
+    {
+        if ($this->cacheTtl === null) {
+            return null;
+        }
+
+        return (int) $this->evaluate($this->cacheTtl);
+    }
+
+    public function getUseShortLabels(): ?bool
+    {
+        if ($this->useShortLabels === null) {
+            return null;
+        }
+
+        return (bool) $this->evaluate($this->useShortLabels);
+    }
+
+    public function getCountryCodes(): array
+    {
+        if ($this->countryCodes instanceof Closure) {
+            return (array) $this->evaluate($this->countryCodes);
+        }
+
+        return $this->countryCodes ?? [];
+    }
+
+    public function getViewbox(): ?array
+    {
+        return $this->viewbox;
+    }
+
+    public function isTextMode(): bool
+    {
+        return (bool) $this->evaluate($this->textMode);
     }
 }
