@@ -23,9 +23,9 @@ abstract class BaseLayer implements Arrayable, Jsonable
     use EvaluatesClosures;
     use HasColor;
 
-    protected ?string $id = null;
-    protected null|string|BaseLayerGroup $group = null;
-    protected bool $isEditable = false;
+    protected null|Closure|string $id = null;
+    protected null|Closure|string|BaseLayerGroup $group = null;
+    protected null|Closure|bool $isEditable = false;
 
     // Configurações de Tooltip
     protected array $tooltipData = [];
@@ -386,7 +386,7 @@ abstract class BaseLayer implements Arrayable, Jsonable
         ?bool $syncAttributes,
         ?string $jsonColumn,
         ?array $popupFieldsColumns,
-        string|array|null $color,
+        null|Closure|string|array $color,
         ?Closure $mapRecordCallback,
     ): static {
         $recordColumns = collect($recordColumns)
@@ -467,7 +467,7 @@ abstract class BaseLayer implements Arrayable, Jsonable
      */
     public function id(Closure|string $id): static
     {
-        $this->id = (string) $this->evaluate($id);
+        $this->id = $id;
         return $this;
     }
 
@@ -477,7 +477,7 @@ abstract class BaseLayer implements Arrayable, Jsonable
      * @param Closure|null|string|BaseLayerGroup $group The group to assign to the layer. Can be a string, an instance of BaseLayerGroup, or a Closure that returns either of those. If a Closure is provided, it will be evaluated to get the actual group value. If null is provided, any existing group assignment will be removed.
      * @return $this
      */
-    public function group(null|string|BaseLayerGroup $group): static
+    public function group(null|Closure|string|BaseLayerGroup $group): static
     {
         $this->group = $group;
         return $this;
@@ -488,7 +488,7 @@ abstract class BaseLayer implements Arrayable, Jsonable
      */
     public function getId(): ?string
     {
-        return $this->id ?: $this->generateDeterministicId();
+        return $this->evaluate($this->id) ?: $this->generateDeterministicId();
     }
 
     /**
@@ -496,7 +496,12 @@ abstract class BaseLayer implements Arrayable, Jsonable
      */
     public function getGroup(): null|string|BaseLayerGroup
     {
-        return $this->group;
+        return $this->evaluate($this->group);
+    }
+
+    public function getEditable(): bool
+    {
+        return (bool) $this->evaluate($this->isEditable);
     }
 
     /**
@@ -506,7 +511,7 @@ abstract class BaseLayer implements Arrayable, Jsonable
      */
     public function editable(Closure|bool $editable = true): static
     {
-        $this->isEditable = (bool) $this->evaluate($editable);
+        $this->isEditable = $editable;
         return $this;
     }
 
@@ -521,13 +526,15 @@ abstract class BaseLayer implements Arrayable, Jsonable
      */
     protected function getBaseData(): array
     {
+        $group = $this->getGroup();
+
         $data = [
             'id'           => $this->getId(),
             'type'         => $this->getType(),
-            'group'        => $this->group instanceof BaseLayerGroup ? $this->group->getId() : $this->group,
+            'group'        => $group instanceof BaseLayerGroup ? $group->getId() : $group,
             'onMouseOver'  => $this->onMouseOverScript,
             'onMouseOut'   => $this->onMouseOutScript,
-            'isEditable'   => $this->isEditable,
+            'isEditable'   => $this->getEditable(),
             'hasRecord'    => $this->record !== null,
         ];
 

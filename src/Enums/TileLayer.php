@@ -3,7 +3,6 @@
 namespace EduardoRibeiroDev\FilamentLeaflet\Enums;
 
 use Filament\Support\Contracts\HasLabel;
-use Illuminate\Support\Str;
 
 enum TileLayer: string implements HasLabel
 {

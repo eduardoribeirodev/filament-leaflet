@@ -20,17 +20,15 @@
   },
   "homepage": "https://github.com/eduardoribeirodev/filament-leaflet#readme",
   "devDependencies": {
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.28.1",
     "vite": "^7.3.0"
   },
   "dependencies": {
-    "@ctrl/tinycolor": "^4.2.0",
     "@geoman-io/leaflet-geoman-free": "^2.19.2",
     "leaflet": "^1.9.4",
-    "leaflet-draw": "^1.0.4",
     "leaflet-geosearch": "^4.4.0",
+    "leaflet-hero-marker": "^1.0.0",
     "leaflet.fullscreen": "^5.1.1",
-    "leaflet.markercluster": "^1.5.3",
-    "vue": "^3.5.26"
+    "leaflet.markercluster": "^1.5.3"
   }
 }

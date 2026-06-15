@@ -8,7 +8,7 @@ import 'leaflet.fullscreen/dist/Control.FullScreen.css';
 import 'leaflet-geosearch/dist/geosearch.css';
 import '../css/index.css';
 
-import { TinyColor } from '@ctrl/tinycolor'
+import 'leaflet-hero-marker'
 import "@geoman-io/leaflet-geoman-free";
 import 'leaflet.markercluster'
 import { FullScreen } from 'leaflet.fullscreen';
@@ -455,122 +455,7 @@ export class LeafletMapCore {
     }
 
     createIcon(iconData) {
-        const url = iconData?.url;
-        const size = iconData?.size || [24, 36];
-        const heroicon = iconData?.heroicon || null;
-
-        // Leaflet Anchors
-        const iconAnchor = [size[0] / 2, size[1]];
-        const popupAnchor = [0, (size[1] / 1.25) * -1];
-        const tooltipAnchor = [0, (size[1] / 1.25) * -1];
-
-        let iconOptions = {
-            className: '',
-            iconSize: size,
-            iconAnchor: iconAnchor,
-            popupAnchor: popupAnchor,
-            tooltipAnchor: tooltipAnchor
-        };
-
-        if (url) {
-            iconOptions.html = `
-            <div style="position: relative; width: ${size[0]}px; height: ${size[1]}px; overflow: visible;">
-                
-                <!-- SHADOW -->
-                <img src="${url}" style="
-                    position: absolute;
-                    width: 100%;
-                    height: 100%;
-                    left: 0;
-                    top: 0;
-                    filter: brightness(0) blur(2px) opacity(0.5);
-                    transform: skewX(-35deg) scale(0.65);
-                    transform-origin: bottom center;
-                    z-index: 0;
-                    pointer-events: none; /* Evita que o mouse interaja com a sombra */
-                "/>
-
-                <!-- MARKER IMAGE -->
-                <img src="${url}" style="
-                    position: absolute;
-                    width: 100%;
-                    height: 100%;
-                    left: 0;
-                    top: 0;
-                    z-index: 1;
-                "/>
-                
-            </div>
-            `;
-
-        } else {
-            const colorManager = new TinyColor(iconData?.color || '#2b7fff');
-            const color = colorManager.toHexString();
-            const darkColor = colorManager.darken(15).toHexString();
-
-            const gradientId = `grad-${color.replace('#', '')}`;
-            const shadowId = `shadow-${color.replace('#', '')}`;
-            const pathData = "M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24C24 5.4 18.6 0 12 0z";
-
-            let innerIcon;
-
-            if (heroicon) {
-                const iconSize = 20;
-                const iconX = 12 - (iconSize / 2);
-                const iconY = 12 - (iconSize / 2);
-
-                innerIcon = `
-                <foreignObject x="${iconX}" y="${iconY}" width="${iconSize}" height="${iconSize}" style="color: white;">
-                    ${heroicon}
-                </foreignObject>
-                `;
-            } else {
-                innerIcon = `<circle cx="12" cy="12" r="5" fill="white" stroke="${darkColor}" stroke-width="1" />`;
-            }
-
-            iconOptions.html = `
-            <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 24 36" 
-                width="${size[0]}" 
-                height="${size[1]}" 
-                style="overflow: visible; display: block;"
-            >
-            <defs>
-                <linearGradient id="${gradientId}" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%"   stop-color="${color}" />
-                    <stop offset="100%" stop-color="${darkColor}" />
-                </linearGradient>
-
-                <filter id="${shadowId}" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" />
-                </filter>
-            </defs>
-
-            <!-- SHADOW -->
-            <path 
-                d="${pathData}" 
-                fill="rgba(0,0,0,0.25)"
-                filter="url(#${shadowId})"
-                transform="translate(12, 36) skewX(-30) scale(1, 0.5) translate(-12, -30)"
-            />
-
-            <!-- MARKER -->
-            <path 
-                d="${pathData}" 
-                fill="url(#${gradientId})" 
-                stroke="${darkColor}" 
-                stroke-width="1" 
-            />
-
-            <!-- INNER ICON (heroicon ou dot) -->
-            ${innerIcon}
-
-            </svg>
-            `;
-        }
-
-        return L.divIcon(iconOptions);
+        return L.heroIcon(iconData);
     }
 
     /**
