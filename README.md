@@ -2,57 +2,22 @@
 
 A powerful and elegant Leaflet integration for Filament PHP that makes creating interactive maps a breeze. Build beautiful, feature-rich maps with markers, clusters, shapes, and more using a fluent, expressive API.
 
-## Features
+### 🌟 Features
 
-- 🗺️ **Interactive Maps** - Full Leaflet integration with customizable tile layers
-- 📍 **Markers & Clusters** - Beautiful markers with popup/tooltip support and intelligent clustering
-- 🎨 **Shapes** - Circles, polygons, polylines, rectangles, and circle markers
-- 🎯 **Click Events** - Handle clicks on markers, shapes, and the map itself
-- 📊 **GeoJSON Support** - Display density maps with custom color schemes
-- 🔄 **Model Binding** - Automatically create markers from Eloquent models
-- 🎨 **Multiple Tile Layers** - Switch between OpenStreetMap, Satellite, and custom layers
-- 💾 **CRUD Operations** - Create markers directly from map clicks
-- 🎭 **Customizable** - Extensive configuration options for every element
-
-### Latest Features
-
-- **Form Field (MapPicker)** - Pick coordinates directly in forms with automatic latitude/longitude sync or JSON storage
-- **Table Column (MapColumn)** - Display maps in Filament table columns for at-a-glance location visualization
-- **Infolist Entry (MapEntry)** - Display read-only maps in Filament infolists
-- **Model GeoJSON Files** - Automatic GeoJSON loading from models with `HasGeoJsonFile` trait
-- **Layer Groups** - Organize markers and shapes with automatic coverage area calculation
-- **Editable Layers & Draw Control** - Edit markers and shapes directly on the map
-- **Dynamic Icons** - Marker icons with automatic sizing and anchor point calculation
-- **Heroicon Support** - Use Filament Heroicons directly in markers with automatic SVG rendering
-- **Enhanced Shapes** - Factory methods (`fromRecord()`) for all shape classes with support for JSON columns
-- **JSON Storage** - Store coordinates as JSON in single database column
-- **Map Interaction Control** - Toggle dragging, zooming, and auto-recenter behavior
-- **Static Maps** - Display read-only maps with automatic interaction disabling
-- **Auto-Recenter** - Automatically recenter maps after users pan around
-- **Mapbox Tile Layer Support** - New tile layer provider with configurable Access Token and tile size
-- **Marker CRUD Actions** - Built-in view, edit, and delete actions for markers on the map
-- **Coordinate DTO** - Improved handling of latitude/longitude pairs with dedicated DTO class
-- **GeoSearch Input Field** - Geocoding search field with multiple provider support (Nominatim, Google Maps, Mapbox, Bing Maps)
-- **Address Value Object** - Detailed address information from geocoding services
-- **Layer Architecture** - Improved class hierarchy with `BaseLayer`, proper type hints, and Livewire compatibility
-
-## Installation
-
-```bash
-composer require eduardoribeirodev/filament-leaflet
-```
-
-Publish the assets:
-
-```bash
-php artisan vendor:publish --tag=filament-leaflet
-```
-
-This will publish the Leaflet assets used by the package.
+- 🧩 **Filament Integration** - Ready-to-use components including `MapPicker` (Forms), `MapColumn` (Tables), and `MapEntry` (Infolists) for seamless coordinate picking, JSON storage, and visualization.
+- 🗺️ **Advanced Map Controls & Layers** - Full Leaflet integration for interactive or static (read-only) maps. Control dragging, zooming, and auto-centering. Includes built-in support for OSM, Satellite, Mapbox, and custom tile layers.
+- 📍 **Smart Markers & Clusters** - Intelligent clustering with popup/tooltip support, dynamic sizing, and native Filament Heroicons integration (automatic SVG rendering).
+- 🎨 **Shapes & Drawing** - Draw, edit, and manage circles, polygons, polylines, and rectangles directly on the map. Group elements with Layer Groups and automatic coverage area calculation.
+- 🔄 **Eloquent & Data Binding** - Easily map models to markers/shapes (via `fromRecord()`). Features single-column JSON coordinate storage and a dedicated Coordinate DTO.
+- 🖱️ **Interactive CRUD & Events** - Catch click events on maps, markers, and shapes. Perform built-in view, create, edit, and delete actions directly from the map UI.
+- 📊 **GeoJSON Support** - Render density maps with custom color schemes and automatically load spatial data using the `HasGeoJsonFile` model trait.
+- 🔍 **GeoSearch & Geocoding** - Built-in search input supporting Nominatim, Google Maps, Mapbox, and Bing Maps, returning highly detailed Address Value Objects.
+- ⚙️ **Robust Architecture** - Highly customizable interface built on a solid `BaseLayer` structure with full Livewire compatibility.
 
 ## Table of Contents
 
 - [Installation](#installation)
+- [Configuration](#configuration)
 - [Core Components](#core-components)
   - [Map Widget](#map-widget)
   - [MapPicker (Form Field)](#mappicker-form-field)
@@ -70,6 +35,62 @@ This will publish the Leaflet assets used by the package.
 - [Configuration Reference](#configuration-reference)
   - [Method Reference](#method-reference)
   - [Concern Methods Reference](#concern-methods-reference)
+
+## Installation
+
+```bash
+composer require eduardoribeirodev/filament-leaflet
+```
+
+Publish the assets:
+
+```bash
+php artisan vendor:publish --tag=filament-leaflet
+```
+
+This will publish the Leaflet assets used by the package.
+
+## Configuration
+
+You can configure default values for the package in [config/filament-leaflet.php](config/filament-leaflet.php):
+
+```php
+return [
+    'columns' => [ // Default column names for model binding (can be overridden in fromRecord() methods)
+        'latitude' => 'lat',
+        'longitude' => 'lng',
+        'coords' => 'location',
+        'radius' => 'radius',
+        'title' => 'title',
+        'description' => 'description',
+        'bounds' => 'bounds',
+        'points' => 'points',
+    ],
+    'sync_record_attributes' => true, // Auto-sync changes back to models
+    'default_map_center' => [-14.235, -51.9253], // Default map center
+];
+```
+
+Publish the configuration file:
+
+```bash
+php artisan vendor:publish --tag=filament-leaflet-config
+```
+
+For Mapbox tile layers, configure your access token in your environment or in [config/services.php](config/services.php):
+
+```env
+MAPBOX_ACCESS_TOKEN=your_mapbox_access_token_here
+MAPBOX_TILE_SIZE=512
+```
+
+```php
+// config/services.php
+'mapbox' => [
+    'token' => env('MAPBOX_ACCESS_TOKEN'),
+    'tile_size' => env('MAPBOX_TILE_SIZE', 512),
+],
+```
 
 ## Core Components
 
@@ -101,7 +122,7 @@ class MyMapWidget extends MapWidget
 }
 ```
 
-![Widget Example](images/widget.png)
+![Widget Example](docs/images/widget.png)
 
 #### Basic Configuration
 
@@ -177,7 +198,7 @@ class MyMapWidget extends MapWidget
 }
 ```
 
-![Map Controls Example](images/map-controls.png)
+![Map Controls Example](docs/images/map-controls.png)
 
 Conditionally show controls at runtime:
 
@@ -209,87 +230,21 @@ class MyMapWidget extends MapWidget
 }
 ```
 
-#### Configuration
+![Widget With Custom Tile Layers Example](docs/images/tile-layers.png)
 
-You can configure default values for the package in `config/filament-leaflet.php`:
-
-```php
-return [
-    
-    'columns' => [ // Default column names for model binding (can be overridden in fromRecord() methods)
-        'latitude' => 'lat',
-        'longitude' => 'lng',
-        'coords' => 'location',
-        'radius' => 'radius',
-        'title' => 'title',
-        'description' => 'description',
-        'bounds' => 'bounds',
-        'points' => 'points',
-    ],
-    'sync_record_attributes' => true, // Auto-sync changes back to models
-    'default_map_center' => [-14.235, -51.9253], // Default map center
-];
-```
-
-Publish the configuration file:
-
-```bash
-php artisan vendor:publish --tag=filament-leaflet-config
-```
-
-![Widget With Custom Tile Layers Example](images/tile-layers.png)
-
-**Available providers:** `OpenStreetMap`, `GoogleStreets`, `GoogleSatellite`, `GoogleHybrid`, `GoogleTerrain`, `EsriWorldImagery`, `EsriWorldStreetMap`, `EsriNatGeo`, `CartoPositron`, `CartoDarkMatter`, `Mapbox`
+**Available providers:** `OpenStreetMap`, `GoogleStreets`, `GoogleSatellite`, `GoogleHybrid`, `GoogleTerrain`, `EsriWorldImagery`, `EsriWorldStreetMap`, `EsriNatGeo`, `CartoPositron`, `CartoDarkMatter`, `MapboxStreets`, `MapboxOutdoors`, `MapboxLight`, `MapboxDark`, `MapboxSatellite`, `MapboxSatelliteStreets`, `MapboxNavigationDay`, `MapboxNavigationNight`
 
 **Mapbox Tile Layer:**
 
-To use Mapbox tiles, configure your access token in `.env` or `config/services.php`:
-
-**Environment variables:**
-
-```env
-MAPBOX_ACCESS_TOKEN=your_mapbox_access_token_here
-MAPBOX_TILE_SIZE=512
-```
-
-**Or in config/services.php:**
-
-```php
-'mapbox' => [
-    'token' => env('MAPBOX_ACCESS_TOKEN'),
-    'tile_size' => env('MAPBOX_TILE_SIZE', 512),
-],
-```
-
-Then use the Mapbox tile layer in your widget:
+To use Mapbox tiles, configure your access token in `.env` or `config/services.php`. Then use the Mapbox tile layer in your widget:
 
 ```php
 use EduardoRibeiroDev\FilamentLeaflet\Enums\TileLayer;
 
 class MyMapWidget extends MapWidget
 {
-    // Single Mapbox layer
     protected TileLayer|string|array $tileLayersUrl = TileLayer::MapboxStreets;
 }
-```
-
-**Available Mapbox providers:**
-
-- `TileLayer::MapboxStreets` - Streets layer
-- `TileLayer::MapboxOutdoors` - Outdoors layer
-- `TileLayer::MapboxLight` - Light layer
-- `TileLayer::MapboxDark` - Dark layer
-- `TileLayer::MapboxSatellite` - Satellite layer
-
-**Or use multiple Mapbox layers:**
-
-```php
-protected TileLayer|string|array $tileLayersUrl = [
-    'Street Map' => TileLayer::OpenStreetMap,
-    'Mapbox Streets' => TileLayer::MapboxStreets,
-    'Mapbox Satellite' => TileLayer::MapboxSatellite,
-    'Mapbox Outdoors' => TileLayer::MapboxOutdoors,
-];
 ```
 
 ### MapPicker (Form Field)
@@ -309,7 +264,7 @@ MapPicker::make('location')
     ->columnSpanFull()
 ```
 
-![Form Field Example](images/form-field.png)
+![Form Field Example](docs/images/form-field.png)
 
 **Load GeoJSON:** Automatically loads from models with `HasGeoJsonFile` trait or `getGeoJsonUrl()` method:
 
@@ -374,14 +329,7 @@ GeoSearchInput::make('location')
     ->columnSpanFull()
 ```
 
-![GeoSearch Input Example](images/geo-search-input.png)
-
-**Supported Providers:**
-
-- `Nominatim` (OpenStreetMap) - Free, no API key required
-- `GoogleMaps` - Requires `GOOGLE_MAPS_API_KEY` environment variable
-- `Mapbox` - Requires `MAPBOX_API_KEY` environment variable
-- `BingMaps` - Requires `BING_MAPS_API_KEY` environment variable
+![GeoSearch Input Example](docs/images/geo-search-input.png)
 
 **Advanced Configuration:**
 
@@ -400,7 +348,7 @@ GeoSearchInput::make('location')
     ->useShortLabels(true)  // "Moscow Kremlin" instead of full address
 ```
 
-![Short Labels GeoSearch Input Example](images/short-labels-geo-search-input.png)
+![Short Labels GeoSearch Input Example](docs/images/short-labels-geo-search-input.png)
 
 **Form Model Integration:**
 
@@ -466,7 +414,7 @@ MapColumn::make('location')
     ->static()    // Disable interactions in table preview
 ```
 
-![Table Column Example](images/table-column.png)
+![Table Column Example](docs/images/table-column.png)
 
 Display circular maps for a unique visual style:
 
@@ -478,7 +426,7 @@ MapColumn::make('location')
     ->circular()  // Optional: circular display
 ```
 
-![Table Column Example](images/circular-table-column.png)
+![Table Column Example](docs/images/circular-table-column.png)
 
 ### MapEntry (Infolist)
 
@@ -502,7 +450,7 @@ MapEntry::make('location')
     ->recenterTimeout(5000)  // Recenter after 5 seconds (null to disable)
 ```
 
-![Infolist Entry Example](images/infolist-entry.png)
+![Infolist Entry Example](docs/images/infolist-entry.png)
 
 ## Map Elements
 
@@ -525,7 +473,7 @@ protected function getMarkers(): array
 }
 ```
 
-![Markers Example](images/markers.png)
+![Markers Example](docs/images/markers.png)
 
 #### Marker Icons
 
@@ -538,7 +486,7 @@ Marker::make(-23.5505, -46.6333)
     ->title('Custom Icon Marker')
 ```
 
-![Custom Icon Marker Example](images/custom-marker.png)
+![Custom Icon Marker Example](docs/images/custom-marker.png)
 
 When using a custom icon URL, the entire marker is replaced with your custom image - the marker's color is ignored.
 
@@ -555,7 +503,7 @@ Marker::make(-23.5505, -46.6333)
     ->color(Color::Indigo);
 ```
 
-![Heroicon Marker Example](images/heroicon-marker.png)
+![Heroicon Marker Example](docs/images/heroicon-marker.png)
 
 When using Heroicons, the marker keeps its default styled appearance with the color gradient, and the Heroicon is automatically rendered in the center in white. The marker's color settings (`.blue()`, `.red()`, etc.) are fully respected.
 
@@ -673,7 +621,7 @@ protected function getMarkers(): array
 }
 ```
 
-![Layer Group Example](images/layer-group.png)
+![Layer Group Example](docs/images/layer-group.png)
 
 #### Feature Group
 
@@ -700,7 +648,7 @@ protected function getMarkers(): array
 }
 ```
 
-![Feature Group Example](images/feature-group.png)
+![Feature Group Example](docs/images/feature-group.png)
 
 #### Marker Cluster
 
@@ -725,7 +673,7 @@ protected function getMarkers(): array
 }
 ```
 
-![Marker Cluster Example](images/marker-cluster.png)
+![Marker Cluster Example](docs/images/marker-cluster.png)
 
 **Cluster from Model:**
 
@@ -832,7 +780,7 @@ protected function getShapes(): array
 }
 ```
 
-![Circles Example](images/circle.png)
+![Circles Example](docs/images/circle.png)
 
 #### Circle Markers
 
@@ -849,7 +797,7 @@ CircleMarker::make(-23.5505, -46.6333)
     ->title('Point of Interest');
 ```
 
-![Circle Markers Example](images/circle-marker.png)
+![Circle Markers Example](docs/images/circle-marker.png)
 
 #### Polygons
 
@@ -880,7 +828,7 @@ Polygon::make()
     ->blue();
 ```
 
-![Polygons Example](images/polygon.png)
+![Polygons Example](docs/images/polygon.png)
 
 #### Polylines
 
@@ -912,7 +860,7 @@ Polyline::make()
     ->weight(3);
 ```
 
-![Polylines Example](images/polyline.png)
+![Polylines Example](docs/images/polyline.png)
 
 #### Rectangles
 
@@ -939,7 +887,7 @@ Rectangle::makeFromCoordinates(
 ->red();
 ```
 
-![Rectangles Example](images/rectangle.png)
+![Rectangles Example](docs/images/rectangle.png)
 
 #### Shapes from Eloquent Models
 
@@ -1740,16 +1688,23 @@ Markers and shapes accept colors from multiple sources:
 Available tile layer providers:
 
 - `TileLayer::OpenStreetMap` - Free, open-source map tile provider
-- `TileLayer::GoogleStreets` - Google Streets map layer
-- `TileLayer::GoogleSatellite` - Google Satellite imagery layer
-- `TileLayer::GoogleHybrid` - Google hybrid (streets + satellite) layer
-- `TileLayer::GoogleTerrain` - Google terrain layer
-- `TileLayer::EsriWorldImagery` - ESRI World Imagery layer
-- `TileLayer::EsriWorldStreetMap` - ESRI World Street Map
-- `TileLayer::EsriNatGeo` - ESRI National Geographic layer
-- `TileLayer::CartoPositron` - Carto Positron light map
-- `TileLayer::CartoDarkMatter` - Carto Dark Matter map
-- `TileLayer::Mapbox` - Mapbox tiles (requires configured Access Token)
+- `TileLayer::GoogleStreets` - Google Maps street view tiles
+- `TileLayer::GoogleSatellite` - Google Maps satellite imagery tiles
+- `TileLayer::GoogleHybrid` - Google Maps hybrid tiles (satellite + labels)
+- `TileLayer::GoogleTerrain` - Google Maps terrain tiles
+- `TileLayer::EsriWorldImagery` - Esri World Imagery tiles
+- `TileLayer::EsriWorldStreetMap` - Esri World Street Map tiles
+- `TileLayer::EsriNatGeo` - Esri National Geographic tiles
+- `TileLayer::CartoPositron` - Carto Positron tiles
+- `TileLayer::CartoDarkMatter` - Carto Dark Matter tiles
+- `TileLayer::MapboxStreets` - Mapbox Streets tiles
+- `TileLayer::MapboxOutdoors` - Mapbox Outdoors tiles
+- `TileLayer::MapboxLight` - Mapbox Light tiles
+- `TileLayer::MapboxDark` - Mapbox Dark tiles
+- `TileLayer::MapboxSatellite` - Mapbox Satellite tiles
+- `TileLayer::MapboxSatelliteStreets` - Mapbox Satellite Streets tiles
+- `TileLayer::MapboxNavigationDay` - Mapbox Navigation Day tiles
+- `TileLayer::MapboxNavigationNight` - Mapbox Navigation Night tiles
 
 ## Value Objects Reference
 
@@ -1936,7 +1891,7 @@ These properties control core map behavior:
 
 ## License
 
-This package is open-sourced software licensed under the MIT license.
+This package is open-sourced software licensed under the MIT license. Check the [LICENSE](LICENSE.md) file for more information.
 
 ## Credits
 
