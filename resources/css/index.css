@@ -7,8 +7,17 @@
     color: black;
 }
 
-.leaflet-pane {
+.leaflet-overlay-pane {
     z-index: 400 !important;
+}
+.leaflet-shadow-pane {
+    z-index: 500 !important;
+}
+.leaflet-marker-pane {
+    z-index: 600 !important;
+}
+.leaflet-popup-pane {
+    z-index: 700 !important;
 }
 
 .leaflet-container .info {
