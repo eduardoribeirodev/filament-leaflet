@@ -7,6 +7,10 @@
     color: black;
 }
 
+.leaflet-pane {
+    z-index: 400 !important;
+}
+
 .leaflet-container .info {
     padding: 8px 10px;
     font: 14px/16px Arial, Helvetica, sans-serif;
