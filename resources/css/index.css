@@ -7,6 +7,22 @@
     color: black;
 }
 
+.leaflet-overlay-pane {
+    z-index: 400 !important;
+}
+.leaflet-shadow-pane {
+    z-index: 500 !important;
+}
+.leaflet-marker-pane {
+    z-index: 600 !important;
+}
+.leaflet-tooltip-pane {
+    z-index: 650 !important;
+}
+.leaflet-popup-pane {
+    z-index: 700 !important;
+}
+
 .leaflet-container .info {
     padding: 8px 10px;
     font: 14px/16px Arial, Helvetica, sans-serif;
