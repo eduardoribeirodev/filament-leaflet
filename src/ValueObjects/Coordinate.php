@@ -65,15 +65,15 @@ readonly class Coordinate implements Arrayable, Castable, Wireable
 
     public static function castUsing(array $arguments): CastsAttributes
     {
-        return new class implements CastsAttributes
+        return new class($arguments) implements CastsAttributes
         {
             protected string $latColumn;
             protected string $lngColumn;
 
-            public function __construct(?string $latColumn = null, ?string $lngColumn =  null)
+            public function __construct(array $arguments = [])
             {
-                $this->latColumn = $latColumn ?? config('filament-leaflet.columns.latitude', Coordinate::LATITUDE_KEY);
-                $this->lngColumn = $lngColumn ?? config('filament-leaflet.columns.longitude', Coordinate::LONGITUDE_KEY);
+                $this->latColumn = $arguments[0] ?? config('filament-leaflet.columns.latitude', Coordinate::LATITUDE_KEY);
+                $this->lngColumn = $arguments[1] ?? config('filament-leaflet.columns.longitude', Coordinate::LONGITUDE_KEY);
             }
 
             public function get(Model $model, string $key, mixed $value, array $attributes)
@@ -84,6 +84,12 @@ readonly class Coordinate implements Arrayable, Castable, Wireable
                     $coords = json_decode($attributes[$key], true);
                 } else {
                     $coords = $attributes;
+                }
+
+                if (!is_array($coords)) return null;
+
+                if (!array_key_exists($this->latColumn, $coords) || !array_key_exists($this->lngColumn, $coords)) {
+                    throw new InvalidArgumentException("The provided record does not contain the required keys '{$this->latColumn}' and '{$this->lngColumn}' for the Coordinate value object.");
                 }
 
                 $lat = $coords[$this->latColumn];
