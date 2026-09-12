@@ -352,6 +352,28 @@ GeoSearchInput::make('location')
 
 **Form Model Integration:**
 
+New selections return a `GeoSearchResult` (or the selected label when
+`textMode(true)` is enabled). If your model uses the `Coordinate` cast, only
+latitude and longitude are stored. When editing that record, the field returns
+the saved `Coordinate` until another search result is selected, and displays
+`latitude, longitude` by default.
+
+To display an address you have stored separately, configure a coordinate label
+resolver:
+
+```php
+GeoSearchInput::make('location')
+    ->coordinateLabelUsing(fn ($record): ?string => $record?->full_address)
+```
+
+The callback can also receive `Coordinate $coordinate` through a parameter named
+`$coordinate` and call your application's reverse-geocoding service. Return a
+string label, or `null` to use the coordinate fallback. Reverse geocoding is
+opt-in: this package makes no automatic lookup when loading saved coordinates.
+Cache lookups in your callback, since label resolution may run more than once;
+handle provider failures by returning `null`. A reverse lookup may return a
+different label from the original search result.
+
 The field returns a `GeoSearchResult` object containing:
 - `coordinate` - The selected location's latitude/longitude
 - `name` - Short place name

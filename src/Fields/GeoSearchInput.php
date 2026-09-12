@@ -7,10 +7,12 @@ use EduardoRibeiroDev\FilamentLeaflet\Enums\GeoSearchProvider;
 use EduardoRibeiroDev\FilamentLeaflet\Services\GeoSearchService;
 use EduardoRibeiroDev\FilamentLeaflet\StateCasts\GeoSearchResultStateCast;
 use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\GeoSearchResult;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
 use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Concerns;
 use Filament\Support\Components\Attributes\ExposedLivewireMethod;
 use Filament\Support\Concerns\HasExtraAlpineAttributes;
+use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\Renderless;
 
 class GeoSearchInput extends Field
@@ -33,7 +35,8 @@ class GeoSearchInput extends Field
     protected int|Closure|null $cacheTtl = null;
     protected int|Closure|null $minSearchLength = null;
     protected bool|Closure|null $useShortLabels = null;
-    protected bool $textMode = false;
+    protected bool|Closure $textMode = false;
+    protected ?Closure $coordinateLabelUsing = null;
 
     /** @var string[] */
     protected array $countryCodes = [];
@@ -49,6 +52,13 @@ class GeoSearchInput extends Field
         $this->noSearchResultsMessage(__('filament-leaflet::fields.geo_search_input.no_results'));
         $this->searchPrompt(__('filament-leaflet::fields.geo_search_input.search_prompt'));
         $this->placeholder(__('filament-leaflet::fields.geo_search_input.placeholder'));
+        $this->afterStateHydrated(function (?Model $record, self $component) {
+            if ($record) {
+                $component->state(
+                    $record->getAttribute($component->getName())
+                );
+            }
+        });
     }
 
     // ─── Fluent customisation API ─────────────────────────────────────────────
@@ -212,13 +222,13 @@ class GeoSearchInput extends Field
     }
 
     /**
-     * @return array<string>
+     * @return array<int, array{label: string, value: string}>
      */
     #[ExposedLivewireMethod]
     #[Renderless]
     public function getSearchResults(string $search): array
     {
-        if (mb_strlen($search) < $this->minSearchLength) {
+        if (mb_strlen($search) < $this->getMinSearchLength()) {
             return [];
         }
 
@@ -226,8 +236,10 @@ class GeoSearchInput extends Field
 
         return collect($results)
             ->map(fn(GeoSearchResult $result) => [
-                'label'  => $result->{$this->useShortLabels ? 'name' : 'displayName'},
-                'value'  => $result
+                'label'  => $result->{$this->getUseShortLabels() ? 'name' : 'displayName'},
+                'value'  => $this->isTextMode()
+                    ? $result->{$this->getUseShortLabels() ? 'name' : 'displayName'}
+                    : json_encode($result->toArray(), JSON_THROW_ON_ERROR),
             ])
             ->values()
             ->all();
@@ -246,8 +258,36 @@ class GeoSearchInput extends Field
     public function getDefaultStateCasts(): array
     {
         return [
-            app(GeoSearchResultStateCast::class),
+            new GeoSearchResultStateCast($this->isTextMode(), (bool) $this->getUseShortLabels()),
         ];
+    }
+
+    /**
+     * Resolve the label of a saved coordinate, for example from a stored address
+     * or an application-provided, cached reverse-geocoding service.
+     */
+    public function coordinateLabelUsing(?Closure $callback): static
+    {
+        $this->coordinateLabelUsing = $callback;
+
+        return $this;
+    }
+
+    #[ExposedLivewireMethod]
+    #[Renderless]
+    public function getOptionLabel(): ?string
+    {
+        $state = $this->getState();
+
+        if ($state instanceof Coordinate) {
+            $label = $this->evaluate($this->coordinateLabelUsing, ['coordinate' => $state]);
+
+            return filled($label) ? (string) $label : "{$state->lat}, {$state->lng}";
+        }
+
+        return $state instanceof GeoSearchResult
+            ? $state->{$this->getUseShortLabels() ? 'name' : 'displayName'}
+            : $state;
     }
 
     public function getProvider(): ?GeoSearchProvider

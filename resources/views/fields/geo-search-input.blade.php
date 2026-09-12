@@ -18,7 +18,7 @@
     $suffixIconColor = $getSuffixIconColor();
     $suffixLabel = $getSuffixLabel();
     $statePath = $getStatePath();
-    $state = $getState();
+    $state = $getRawState();
     $livewireKey = $getLivewireKey();
 @endphp
 
@@ -69,6 +69,11 @@
                         canOptionLabelsWrap: false,
                         canSelectPlaceholder: false,
                         isHtmlAllowed: true,
+                        initialOptionLabel: @js($getOptionLabel()),
+                        getOptionLabelUsing: async () => await $wire.callSchemaComponentMethod(
+                            @js($key),
+                            'getOptionLabel',
+                        ),
                         getSearchResultsUsing: async (search) => {
                             return await $wire.callSchemaComponentMethod(
                                 @js($key),
