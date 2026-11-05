@@ -2,6 +2,7 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet;
 
+use EduardoRibeiroDev\FilamentLeaflet\Console\Commands\MakeWidgetCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use Filament\Support\Facades\FilamentAsset;
@@ -18,6 +19,7 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
             ->name('filament-leaflet')
             ->hasConfigFile('filament-leaflet')
             ->hasTranslations()
+            ->hasCommands([MakeWidgetCommand::class])
             ->hasViews();
     }
 
