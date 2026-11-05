@@ -54,41 +54,29 @@ class Marker extends BaseLayer
      * @param string|null $titleColumn Optional column name for marker title.
      * @param string|null $descriptionColumn Optional column name for marker description.
      * @param array|null $popupFieldsColumns Optional array of column names to include in popup.
-     * @param Closure|string|null $coordsColumn Optional column name or Closure returning the coordinates attribute name.
-     * @param Closure|string|null $titleColumn Optional column name or Closure returning the marker title column name.
-     * @param Closure|string|null $descriptionColumn Optional column name or Closure returning the marker description column name.
-     * @param Closure|array|null $popupFieldsColumns Optional array of popup column names or Closure returning them.
-     * @param Closure|string|array|null $color Optional marker color or Closure returning the color.
-     * @param Closure|bool|null $syncRecord Whether to sync changes back to the record when the marker is dragged on the map.
-     * @param Closure|string|null $iconUrl Optional URL or Closure to determine the marker's icon URL.
+     * @param string|null $coordsColumn Optional column name returning the coordinates attribute name.
+     * @param string|null $titleColumn Optional column name returning the marker title column name.
+     * @param string|null $descriptionColumn Optional column name returning the marker description column name.
+     * @param array|null $popupFieldsColumns Optional array of popup column names returning them.
+     * @param string|array|null $color Optional marker color returning the color.
+     * @param bool|null $syncRecord Whether to sync changes back to the record when the marker is dragged on the map.
+     * @param string|null $iconUrl Optional URL to determine the marker's icon URL.
      * @param Closure|null $mapRecordCallback Optional Closure to further customize the marker based on the record.
      * @return static A new Marker instance configured based on the provided record.
      */
     public static function fromRecord(
         Model $record,
-        null|Closure|string $coordsColumn = null,
-        null|Closure|string $titleColumn = null,
-        null|Closure|string $descriptionColumn = null,
-        null|Closure|array $popupFieldsColumns = null,
-        null|Closure|string|array $color = null,
-        null|Closure|bool $syncRecord = null,
-        null|Closure|string $iconUrl = null,
+        null|string $coordsColumn = null,
+        null|string $titleColumn = null,
+        null|string $descriptionColumn = null,
+        null|array $popupFieldsColumns = null,
+        null|string|array $color = null,
+        null|bool $syncRecord = null,
+        null|string $iconUrl = null,
         ?Closure $mapRecordCallback = null
     ): static {
-        if ($coordsColumn instanceof Closure) {
-            $coordsColumn = $coordsColumn($record);
-        }
-
         $coordsColumn ??= config('filament-leaflet.columns.coords');
         $coords = $record->getAttribute($coordsColumn) ?? throw new \Exception("The specified coordinates column '{$coordsColumn}' does not exist on the record.");
-
-        if ($popupFieldsColumns instanceof Closure) {
-            $popupFieldsColumns = $popupFieldsColumns($record);
-        }
-
-        if ($syncRecord instanceof Closure) {
-            $syncRecord = (bool) $syncRecord($record);
-        }
 
         return static::makeFromRecord(
             record: $record,
