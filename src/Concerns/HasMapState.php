@@ -13,16 +13,11 @@ use Filament\Support\Components\Attributes\ExposedLivewireMethod;
 trait HasMapState
 {
     use HasMapConfig {
-        getGeoJsonTooltip as getParentGeoJsonTooltip;
-        getGeoJsonUrl as getParentGeoJsonUrl;
         getMapData as getParentMapData;
         getMapCenter as getParentMapCenter;
     }
 
-    protected array|Closure $geoJsonData = [];
-    protected string|Closure|null $geoJsonTooltip = null;
-    protected array|Closure $markers = [];
-    protected array|Closure $shapes = [];
+    protected array|Closure $layers = [];
 
     protected Marker|Closure|null $pickMarker = null;
     protected Marker|Closure|null $defaultPickMarker = null;
@@ -439,49 +434,23 @@ trait HasMapState
     }
 
     /**
-     * Set the GeoJSON URL for the map. The $url parameter can be a string URL or a Closure that returns a string URL pointing to a GeoJSON file. This method allows you to specify the source of GeoJSON data that will be used to render features on the map, such as markers, shapes, and tooltips.
-     * @param string|Closure $url A string URL or a Closure that returns a string URL pointing to a GeoJSON file.
+     * Set the layers for the map. The $layers parameter can be an array of layer data or a Closure that returns such an array. This method allows you to define the layers that will be displayed on the map, optionally merging with existing layers based on the $merge parameter.
+     * @param array|Closure $layers An array of layer data or a Closure that returns such an array.
+     * @param bool $merge Whether to merge the new layers with existing layers (default: true).
      * @return $this The current instance of the class using this trait, allowing for method chaining.
      */
-    public function geoJsonUrl(string|Closure $url): static
+    public function layers(array|Closure $layers, bool $merge = true)
     {
-        $this->geoJsonUrl = $url;
+        if (!$merge) {
+            $this->layers = $layers;
+            return $this;
+        }
 
-        return $this;
-    }
-
-    /**
-     * Set the GeoJSON data for the map. The $data parameter can be an array of GeoJSON features or a Closure that returns such an array. This method allows you to provide GeoJSON data directly, which will be used to render features on the map, such as markers, shapes, and tooltips. Using this method is recommended over geoJsonUrl() for better performance and flexibility.
-     * @param array|Closure $data An array of GeoJSON features or a Closure that returns such an array.
-     * @return $this The current instance of the class using this trait, allowing for method chaining.
-     */
-    public function geoJsonData(array|Closure $data): static
-    {
-        $this->geoJsonData = $data;
-
-        return $this;
-    }
-
-    /**
-     * Set the GeoJSON colors for the map. The $colors parameter can be an array of color values or a Closure that returns such an array. This method allows you to define the colors for GeoJSON features on the map.
-     * @param array|Closure $colors An array of color values or a Closure that returns such an array.
-     * @return $this The current instance of the class using this trait, allowing for method chaining.
-     */
-    public function geoJsonColors(array|Closure $colors): static
-    {
-        $this->geoJsonColors = $colors;
-
-        return $this;
-    }
-
-    /**
-     * Set the GeoJSON tooltip for the map. The $tooltip parameter can be a string or a Closure that returns a string. This method allows you to define the tooltip text for GeoJSON features on the map.
-     * @param string|Closure|null $tooltip A string or a Closure that returns a string.
-     * @return $this The current instance of the class using this trait, allowing for method chaining.
-     */
-    public function geoJsonTooltip(string|Closure|null $tooltip): static
-    {
-        $this->geoJsonTooltip = $tooltip;
+        $currentLayers = $this->layers;
+        $this->layers = fn (): array => array_merge(
+            (array) $this->evaluate($currentLayers),
+            (array) $this->evaluate($layers),
+        );
 
         return $this;
     }
@@ -493,9 +462,7 @@ trait HasMapState
      */
     public function markers(array|Closure $markers): static
     {
-        $this->markers = $markers;
-
-        return $this;
+        return $this->layers($markers);
     }
 
     /**
@@ -505,9 +472,17 @@ trait HasMapState
      */
     public function shapes(array|Closure $shapes): static
     {
-        $this->shapes = $shapes;
+        return $this->layers($shapes);
+    }
 
-        return $this;
+    /**
+     * Set the Boundary layers displayed on the map.
+     * @param array<\EduardoRibeiroDev\FilamentLeaflet\Layers\Boundaries\Boundary>|Closure $boundaries
+     * @return $this The current instance of the class using this trait, allowing for method chaining.
+     */
+    public function boundaries(array|Closure $boundaries): static
+    {
+        return $this->layers($boundaries);
     }
 
     /**
@@ -595,37 +570,9 @@ trait HasMapState
         ];
     }
 
-    protected function getMarkers(): array
+    protected function getLayers(): array
     {
-        return $this->evaluate($this->markers) ?? [];
-    }
-
-    protected function getShapes(): array
-    {
-        return $this->evaluate($this->shapes) ?? [];
-    }
-
-    protected function getGeoJsonTooltip(): string
-    {
-        if ($this->geoJsonTooltip !== null) {
-            return $this->evaluate($this->geoJsonTooltip);
-        }
-
-        return $this->getParentGeoJsonTooltip();
-    }
-
-    protected function getGeoJsonUrl(): ?string
-    {
-        if ($this->geoJsonUrl !== null) {
-            return $this->evaluate($this->geoJsonUrl);
-        }
-
-        $record = $this->getRecord();
-        if ($record && method_exists($record, 'getGeoJsonUrl')) {
-            return $record->getGeoJsonUrl();
-        }
-
-        return $this->getParentGeoJsonUrl();
+        return $this->evaluate($this->layers) ?? [];
     }
 
     #[ExposedLivewireMethod]

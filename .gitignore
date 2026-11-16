@@ -12,6 +12,8 @@ yarn-error.log
 # Caches
 .phpunit.cache
 .phpunit.result.cache
+.geojson.cache
+.DS_Store
 /build
 
 # IDE Helper

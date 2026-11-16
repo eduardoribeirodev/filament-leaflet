@@ -52,6 +52,14 @@ abstract class BaseLayer implements Arrayable, Jsonable
         $this->id = $id;
     }
 
+    /**
+     * Método de fábrica para criar uma instância do layer. Os parâmetros podem variar dependendo do tipo de layer (por exemplo, um marker pode precisar de latitude e longitude, enquanto um polígono pode precisar de um array de coordenadas).
+     */
+    public static function make(): static
+    {
+        return new static();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Abstract Methods - Devem ser implementados nas subclasses
@@ -67,11 +75,6 @@ abstract class BaseLayer implements Arrayable, Jsonable
      * Retorna os dados específicos do layer para serialização
      */
     abstract protected function getLayerData(): array;
-
-    /**
-     * Método de fábrica para criar uma instância do layer. Os parâmetros podem variar dependendo do tipo de layer (por exemplo, um marker pode precisar de latitude e longitude, enquanto um polígono pode precisar de um array de coordenadas).
-     */
-    abstract public static function make(): static;
 
     /**
      * Método de fábrica para criar uma instância do layer a partir de um registro Eloquent.

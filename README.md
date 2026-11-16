@@ -1,40 +1,22 @@
 # Filament Leaflet
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/eduardoribeirodev/filament-leaflet.svg?style=flat-square)](https://packagist.org/packages/eduardoribeirodev/filament-leaflet)
+[![License](https://img.shields.io/packagist/l/eduardoribeirodev/filament-leaflet.svg?style=flat-square)](https://packagist.org/packages/eduardoribeirodev/filament-leaflet)
+[![Downloads](https://img.shields.io/packagist/dt/eduardoribeirodev/filament-leaflet.svg?style=flat-square)](https://packagist.org/packages/eduardoribeirodev/filament-leaflet)
+
 A powerful and elegant Leaflet integration for Filament PHP that makes creating interactive maps a breeze. Build beautiful, feature-rich maps with markers, clusters, shapes, and more using a fluent, expressive API.
 
-### 🌟 Features
+### Features
 
-- 🧩 **Filament Integration** - Ready-to-use components including `MapPicker` (Forms), `MapColumn` (Tables), and `MapEntry` (Infolists) for seamless coordinate picking, JSON storage, and visualization.
-- 🗺️ **Advanced Map Controls & Layers** - Full Leaflet integration for interactive or static (read-only) maps. Control dragging, zooming, and auto-centering. Includes built-in support for OSM, Satellite, Mapbox, and custom tile layers.
-- 📍 **Smart Markers & Clusters** - Intelligent clustering with popup/tooltip support, dynamic sizing, and native Filament Heroicons integration (automatic SVG rendering).
-- 🎨 **Shapes & Drawing** - Draw, edit, and manage circles, polygons, polylines, and rectangles directly on the map. Group elements with Layer Groups and automatic coverage area calculation.
-- 🔄 **Eloquent & Data Binding** - Easily map models to markers/shapes (via `fromRecord()`). Features single-column JSON coordinate storage and a dedicated Coordinate DTO.
-- 🖱️ **Interactive CRUD & Events** - Catch click events on maps, markers, and shapes. Perform built-in view, create, edit, and delete actions directly from the map UI.
-- 📊 **GeoJSON Support** - Render density maps with custom color schemes and automatically load spatial data using the `HasGeoJsonFile` model trait.
-- 🔍 **GeoSearch & Geocoding** - Built-in search input supporting Nominatim, Google Maps, Mapbox, and Bing Maps, returning highly detailed Address Value Objects.
-- ⚙️ **Robust Architecture** - Highly customizable interface built on a solid `BaseLayer` structure with full Livewire compatibility.
-
-## Table of Contents
-
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Core Components](#core-components)
-  - [Map Widget](#map-widget)
-  - [MapPicker (Form Field)](#mappicker-form-field)
-  - [GeoSearchInput (Form Field)](#geosearchinput-form-field)
-  - [MapColumn (Table Column)](#mapcolumn-table-column)
-  - [MapEntry (Infolist)](#mapentry-infolist)
-- [Map Elements](#map-elements)
-  - [Markers](#markers)
-  - [Layer Groups](#layer-groups)
-  - [Shapes](#shapes)
-  - [Editable Layers](#editable-layers)
-- [User Interactions](#user-interactions)
-- [Advanced Features](#advanced-features)
-- [Best Practices](#best-practices)
-- [Configuration Reference](#configuration-reference)
-  - [Method Reference](#method-reference)
-  - [Concern Methods Reference](#concern-methods-reference)
+- **Filament Integration** - Ready-to-use components including `MapPicker` (Forms), `MapColumn` (Tables), and `MapEntry` (Infolists) for seamless coordinate picking, JSON storage, and visualization.
+- **Advanced Map Controls & Layers** - Full Leaflet integration for interactive or static (read-only) maps. Control dragging, zooming, and auto-centering. Includes built-in support for OSM, Satellite, Mapbox, and custom tile layers.
+- **Smart Markers & Clusters** - Intelligent clustering with popup/tooltip support, dynamic sizing, and native Filament Heroicons integration (automatic SVG rendering).
+- **Shapes & Drawing** - Draw, edit, and manage circles, polygons, polylines, and rectangles directly on the map. Group elements with Layer Groups and automatic coverage area calculation.
+- **Eloquent & Data Binding** - Easily map models to markers/shapes (via `fromRecord()`). Features single-column JSON coordinate storage and a dedicated Coordinate DTO.
+- **Interactive CRUD & Events** - Catch click events on maps, markers, and shapes. Perform built-in view, create, edit, and delete actions directly from the map UI.
+- **GeoJSON Support** - Load boundaries from URLs, Laravel storage, or inline GeoJSON and build choropleth maps with custom color scales.
+- **GeoSearch & Geocoding** - Built-in search input supporting Nominatim, Google Maps, Mapbox, and Bing Maps, returning highly detailed Address Value Objects.
+- **Robust Architecture** - Highly customizable interface built on a solid `BaseLayer` structure with full Livewire compatibility.
 
 ## Installation
 
@@ -45,10 +27,10 @@ composer require eduardoribeirodev/filament-leaflet
 Publish the assets:
 
 ```bash
-php artisan vendor:publish --tag=filament-leaflet
+php artisan filament:assets
 ```
 
-This will publish the Leaflet assets used by the package.
+This publishes the Leaflet CSS and JavaScript. To use the bundled administrative boundaries, also [publish the GeoJSON files](#publish-administrative-geojson).
 
 ## Configuration
 
@@ -266,30 +248,21 @@ MapPicker::make('location')
 
 ![Form Field Example](docs/images/form-field.png)
 
-**Load GeoJSON:** Automatically loads from models with `HasGeoJsonFile` trait or `getGeoJsonUrl()` method:
+**Load GeoJSON:** Store the file reference with the `GeoJson` cast and create a Boundary from the record:
 
 ```php
-use EduardoRibeiroDev\FilamentLeaflet\Concerns\HasGeoJsonFile;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Boundaries\Boundary;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\GeoJson;
 
 class DeliveryZone extends Model
 {
-    use HasGeoJsonFile;
-    
-    public function getGeoJsonFileAttributeName(): string
+    protected function casts(): array
     {
-        return 'geojson_file';
-    }
-
-    public function getGeoJsonFileDisk(): ?string
-    {
-        return 's3';
-    }
-
-    public function getExpirationTime(): ?DateTime
-    {
-        return now()->addHour();
+        return ['geojson_file' => GeoJson::class . ':s3'];
     }
 }
+
+$boundary = Boundary::fromRecord($deliveryZone, geoJsonColumn: 'geojson_file');
 ```
 
 **Customize pick marker:** Visual feedback when clicking the map:
@@ -1331,54 +1304,182 @@ class ManageLocations extends ManageRecords
 
 This automatically refreshes the map after create/edit/delete actions.
 
-### GeoJSON Density Maps
+### GeoJSON Boundaries
 
-Display choropleth maps with custom density data:
+GeoJSON is represented by a regular map layer. Choose its source explicitly and add it with `boundaries()`:
 
 ```php
-class BrazilDensityWidget extends MapWidget
-{
-    protected ?string $geoJsonUrl = 'https://example.com/brazil-states.json';
-    
-    protected array $geoJsonColors = [
-        '#FED976', '#FEB24C', '#FD8D3C', '#FC4E2A', 
-        '#E31A1C', '#BD0026', '#800026',
-    ];
-    
-    protected function getGeoJsonData(): array
-    {
-        return [
-            'SP' => 166.23,  // São Paulo
-            'RJ' => 365.23,  // Rio de Janeiro
-            'MG' => 33.41,   // Minas Gerais
-        ];
-    }
-    
-    protected function getGeoJsonTooltip(): string
-    {
-        return <<<HTML
-            <h4>{state}</h4>
-            <b>Population Density: {density} per km²</b>
-        HTML;
-    }
-}
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Boundaries\Boundary;
+
+$map->boundaries([
+    Boundary::make()->fromUrl('https://example.com/coverage.geojson'),
+]);
 ```
 
-Colors are automatically applied based on data distribution.
+Local files and in-memory GeoJSON are supported too:
+
+```php
+Boundary::make()->fromStorage('maps/coverage.geojson', disk: 'public');
+Boundary::make()->fromGeoJson($featureCollection);
+```
+
+Use feature properties to join external values and create a choropleth:
+
+```php
+Boundary::make()
+    ->fromUrl('https://example.com/brazil-states.geojson')
+    ->features(key: 'shapeISO', label: 'shapeName')
+    ->choropleth(
+        values: ['BR-SP' => 166.23, 'BR-RJ' => 365.23, 'BR-MG' => 33.41],
+        colors: ['#FED976', '#FD8D3C', '#BD0026'],
+        missingColor: '#E5E7EB',
+    );
+```
+
+When upgrading from the old GeoJSON API, replace `geoJsonUrl()` or a widget's `getGeoJsonUrl()` with `Boundary::make()->fromUrl($url)`. Add the layer with `boundaries([...])` on a form or infolist component, or return it from `getBoundaries()` on a widget. Move `geoJsonData()` and `geoJsonColors()` into `choropleth()`, using the feature IDs as keys, and replace `geoJsonTooltip()` with `tooltipContent()` on the layer. For models that used `HasGeoJsonFile`, use `fromStorage()` for an existing path and disk, or migrate the stored value to the `GeoJson` cast's `file_path` and optional `disk` format before using `Boundary::fromRecord()`.
+
+Use `AdministrativeBoundary` for built-in administrative layers. Generated country classes in the `Countries` namespace are static helpers that convert codes and exact catalog names into shapeIDs. They do not inherit layer configuration or create map layers. The package includes Brazil, Germany, Spain, France, Italy, Portugal and the United States.
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Countries\Brazil;
+use EduardoRibeiroDev\FilamentLeaflet\Enums\AdministrativeLevel;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Boundaries\AdministrativeBoundary;
+
+AdministrativeBoundary::make()
+    ->restrictTo(Brazil::state('MT'))
+    ->values(Brazil::cities('MT', [
+        'Cuiabá' => 120,
+        'Várzea Grande' => 40,
+    ]))
+    ->level(AdministrativeLevel::Auto)
+    ->colorScale(['#FED976', '#FD8D3C', '#BD0026']);
+```
+
+Singular helpers return a shapeID string. Plural helpers return ordinary `shapeID => value` arrays:
+
+```php
+Brazil::country();                         // Country shapeID
+Brazil::state('MT');                       // State shapeID
+Brazil::city('MT', 'Cuiabá');               // City shapeID
+Brazil::states(['MT' => 20, 'SP' => 50]);   // State IDs mapped to values
+Brazil::cities('MT', ['Cuiabá' => 120]);    // City IDs mapped to values
+```
+
+`restrictTo()` accepts one shapeID, a list of shapeIDs, a closure returning either, or `null` to clear the limit. `values()` accepts a map keyed by shapeID, a list of those maps, or a closure. Several countries can share one logical layer and color scale without spreading helper results:
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Countries\UnitedStates;
+
+AdministrativeBoundary::make()
+    ->values([
+        Brazil::states(['MT' => 20, 'SP' => 50]),
+        UnitedStates::states(['CA' => 80]),
+    ])
+    ->level(AdministrativeLevel::Auto);
+```
+
+To render countries as independent layers, create separate `AdministrativeBoundary` instances. Each instance owns its ID, level, colors and other presentation settings:
+
+```php
+$map->boundaries([
+    AdministrativeBoundary::make()
+        ->id('brazil-visits')
+        ->restrictTo(Brazil::country())
+        ->values($brazilTotalsByShapeId),
+    AdministrativeBoundary::make()
+        ->id('usa-visits')
+        ->restrictTo(UnitedStates::country())
+        ->values($usaTotalsByShapeId),
+]);
+```
+
+Use the same layer API for a query grouped by persisted municipal IDs:
+
+```php
+AdministrativeBoundary::make()
+    ->id('visits')
+    ->values($totalsByShapeId)
+    ->level(AdministrativeLevel::Auto);
+```
+
+`state()` takes a state code and `city()` takes an exact catalog name within its state. Unknown codes, unknown names and duplicate city names within one state throw an exception. Every state and city has its own ID even when its source `shapeISO` is missing or nonstandard. Country classes and their PHPDoc options are generated by `npm run build:geojson` or `npm run build:locations`, preserving editor completion for supported codes and names. IDs returned by `MunicipalityResolver` can be used directly in `values()` or `restrictTo()`.
+
+All values in a layer must belong to one source level. Finite numeric values are summed for their ancestors. Municipal values can produce state and country totals, and state values can produce country totals. Repeated IDs across value maps add their values. Null values remain missing, and missing regions do not become zero. Use additive metrics such as counts or amounts. Mixed source levels, nonfinite values and overflowing sums throw an exception.
+
+`level()` controls display independently of the source data. It accepts `AdministrativeLevel::Country`, `State`, `Municipality` or `Auto`, and also supports a closure returning an enum. Auto is the default and advances only as far as the supplied data. A fixed level more detailed than the values, or coarser than the explicit geographical scope, throws an exception.
+
+An `AdministrativeBoundary` without `restrictTo()` infers countries from the supplied IDs and can explore their complete hierarchy up to the source level. Empty helper results are ordinary arrays and carry no country or level information. An empty array uses the explicit scope, or all bundled countries when no scope is selected, and renders ordinary geometry. To keep a filtered dashboard on a specific country and level when no rows match, set both explicitly:
+
+```php
+AdministrativeBoundary::make()
+    ->restrictTo(Brazil::country())
+    ->values(Brazil::states($stateTotals))
+    ->level(AdministrativeLevel::State);
+```
+
+To look up a `shapeID` from a point, use `MunicipalityResolver`.
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Support\MunicipalityResolver;
+use EduardoRibeiroDev\FilamentLeaflet\ValueObjects\Coordinate;
+
+$resolver = app(MunicipalityResolver::class);
+$point = new Coordinate(-15.6014, -56.0979);
+$municipality = $resolver->resolve($point);
+$state = $resolver->resolve($point, AdministrativeLevel::State);
+$country = $resolver->resolve($point, AdministrativeLevel::Country, country: 'BRA');
+```
+
+ADM2 is the default. Each level checks its own polygons, so an ambiguous municipality can still resolve to a state or country. The optional named `country` argument uses ISO3. The resolver returns null for invalid coordinates, locations outside the bundled coverage and locations matching more than one polygon at the requested level.
+
+Auto uses actual screen coverage and typical municipal size. It shows municipalities only in the focused state, keeping surrounding states at ADM1 and other countries at ADM0. Clicking a state opens its municipalities. Click focus is released when moving away or on the first zoom reduction. The country/state and state/municipality transitions use symmetric entry and exit thresholds. Alaska, Hawaii and the US mainland are evaluated as separate regions. Pending loads use the existing source cache and stale responses cannot replace the geometry for a newer view. Map movement executes no SQL.
+
+Country helpers have no `make()`, `values()`, `level()`, `id()` or styling methods. Replace direct country layers such as `Brazil::states(...)->level(...)` with `AdministrativeBoundary::make()->values(Brazil::states(...))->level(...)`. Replace old country-class imports from `Layers\Boundaries` with `Countries`. No GeoJSON or JavaScript payload migration is required.
+
+#### Publish Administrative GeoJSON
+
+Choose which countries to publish:
+
+```bash
+php artisan filament-leaflet:install-geojson
+```
+
+For each selected country, the command publishes all available levels (ADM0, ADM1 and ADM2) from the bundled files. To publish all seven countries without prompting, run:
+
+```bash
+php artisan filament-leaflet:install-geojson --all
+```
+
+If you publish only some countries, limit each administrative layer to countries you installed. For example, after publishing Brazil, use `AdministrativeBoundary::make()->restrictTo(Brazil::country())`. A copy failure makes the command return a nonzero exit code. Rerun it after fixing the reported error.
+
+GeoJSON files are fetched on demand and cached for the life of the map. Switching levels preserves the map's center and zoom, and keeps the previous geometry visible while loading the next one or if loading fails. `fitBounds()` can frame the initial data; automatic level switches do not reframe the map. The same logical layer and its group, popup, tooltip, and click action are preserved across switches. For Livewire updates, assign an explicit `id()` when the layer should retain its identity as its configuration changes.
+
+Built-in sources include small bounding boxes generated from the bundled geometry at all administrative levels. Each feature also includes a build-time `bbox`, so viewport filtering does not traverse its coordinates in the browser. Offscreen countries do not download their country/state files, and at municipal zoom only intersecting state files load. Pans are checked after movement ends (with a short debounce). Within downloaded files, readonly layers draw only features whose bounds intersect the viewport; moving inside the same visible feature set does not rebuild geometry. Returning uses the existing source cache. This uses static GeoJSON requests, with no new Laravel endpoint or database queries on movement. Totals and color scales continue to use all supplied values, so moving the viewport does not change their meaning.
+
+All layers use the same bundled `adm0.geojson`, `adm1.geojson` and `adm2.geojson` files at every zoom, including editable layers. Geometry is simplified at build time with Mapshaper's topology-aware Douglas–Peucker algorithm and a 25-metre distance tolerance. Files belonging to a country are processed together, preserving shared borders, every polygon component and hole, IDs and names. No separate geometry variants are distributed. The coordinate resolver uses these same files, so points close to a border can resolve differently from the unsimplified source. After updating, run the installer again for the countries you use to refresh their files and remove obsolete variants.
+
+`npm run build:geojson` applies simplification automatically after downloading and splitting source geometry. `npm run build:simplify` simplifies existing bundled files and regenerates their indexes and country classes. Each file records the method, distance and a geometry checksum; repeating the command skips unchanged simplified geometry to avoid cumulative detail loss. To change the tolerance or combine updated and previously simplified files, rebuild from source with `build:geojson`. `npm run build:locations` rebuilds only the catalogs, spatial indexes, bounds metadata and generated country classes from the existing geometry.
+
+During native pan/zoom animations, pending loads may finish into the cache but cannot replace displayed paths. At movement end, the latest viewport and zoom are resolved. A buffered viewport reduces blank edges during animation, and features that remain visible retain their Leaflet path instances, including neighboring states and countries when another region changes level. New geometry is prepared in small batches between animation frames. Readonly Canvas paths are also projected in those batches, remaining invisible and noninteractive until the replacement is ready. Navigation, configuration updates and removal cancel unfinished preparation and discard its staged paths. Style and data changes still update the affected features. A single very large feature remains a synchronous Leaflet operation.
+
+Initial `fitBounds()` can use those bounding boxes to find offscreen states without downloading all of them. Bounds support wrapped world copies and states crossing the date line. Sources without bounds retain their previous loading behavior, including custom GeoJSON. A shared national ADM2 file still downloads as a whole when any selected state using it becomes visible; its features are filtered locally. Readonly boundaries use a shared Canvas renderer and opt out of Geoman editing initialization. Editable boundaries retain their editing behavior. Choropleth color domains are calculated once for each rendered layer, rather than for every polygon.
 
 ### Multi-Language Support
 
-The package includes built-in support for: English (en), Portuguese (pt_BR, pt_PT), Spanish (es), French (fr), German (de), Italian (it).
+The package includes built-in support for: English (en), Portuguese (pt_BR, pt_PT), Spanish (es), French (fr), German (de), Italian (it). Draw control labels, tooltips and messages follow your application's locale.
 
-All draw control labels, tooltips, and messages are automatically translated based on your application's locale.
+Administrative region names follow the current Laravel locale automatically. The map receives one `regionNames` dictionary for that locale, shared by all its layers, and looks up labels by `shapeID`. The bundled `regions.php` files cover countries, states and selected ADM2 regions with established translated names. Missing entries use the original GeoJSON `shapeName`; an unsupported locale also uses the original names. Custom `featureLabel()` fields keep their configured behavior. Changing the locale and refreshing a Livewire map updates its labels without modifying source geometry, value keys or the names accepted by country helpers.
 
-To customize translations:
+To customize labels, publish the translations with `php artisan vendor:publish --tag=filament-leaflet-translations`, then edit `lang/vendor/filament-leaflet/{locale}/regions.php`. Partial files override only the supplied IDs. For example:
 
-```bash
-php artisan vendor:publish --tag=filament-leaflet-translations
+```php
+// lang/vendor/filament-leaflet/pt_BR/regions.php
+return [
+    '88855331B58508533874502' => 'Brasil',
+];
 ```
 
-Then edit files in `lang/vendor/filament-leaflet`.
+Builds validate bundled translation keys against the current geometry index and reject orphan IDs or empty labels. Validation uses the PHP CLI and can also be run with `php scripts/validate-region-translations.php`. No translated geometry copies or additional HTTP requests are needed.
 
 ## Best Practices
 
@@ -1519,9 +1620,7 @@ public function getCustomScripts(): string
 | `tileLayersUrl($layers)` | Set tile layer(s) |
 | `markers($array)` | Set initial markers |
 | `shapes($array)` | Set initial shapes |
-| `geoJsonUrl($url)` | Set GeoJSON URL |
-| `geoJsonData($data)` | Set GeoJSON density data |
-| `geoJsonTooltip($tooltip)` | Set GeoJSON tooltip template |
+| `boundaries($array)` | Set Boundary layers |
 | `pickMarker($marker)` | Customize the temporary marker shown on click |
 | `onMapClick($callback)` | Handle map click events with closure callback |
 | `onLayerClick($callback)` | Handle layer click events with closure callback |
@@ -1544,9 +1643,7 @@ public function getCustomScripts(): string
 | `tileLayersUrl($layers)` | Set tile layer(s) |
 | `markers($array)` | Set initial markers |
 | `shapes($array)` | Set initial shapes |
-| `geoJsonUrl($url)` | Set GeoJSON URL |
-| `geoJsonData($data)` | Set GeoJSON density data |
-| `geoJsonTooltip($tooltip)` | Set GeoJSON tooltip template |
+| `boundaries($array)` | Set Boundary layers |
 | `pickMarker($marker)` | Customize the temporary marker shown on click |
 | `onMapClick($callback)` | Handle map click events with closure callback |
 | `onLayerClick($callback)` | Handle layer click events with closure callback |
@@ -1568,9 +1665,7 @@ public function getCustomScripts(): string
 | `tileLayersUrl($layers)` | Set tile layer(s) |
 | `markers($array)` | Set initial markers |
 | `shapes($array)` | Set initial shapes |
-| `geoJsonUrl($url)` | Set GeoJSON URL |
-| `geoJsonData($data)` | Set GeoJSON density data |
-| `geoJsonTooltip($tooltip)` | Set GeoJSON tooltip template |
+| `boundaries($array)` | Set Boundary layers |
 | `pickMarker($marker)` | Customize the temporary marker shown on click |
 | `onMapClick($callback)` | Handle map click events with closure callback |
 | `onLayerClick($callback)` | Handle layer click events with closure callback |
@@ -1868,14 +1963,27 @@ The `Address` value object contains structured address information from geocodin
 
 ## Concern Methods Reference
 
-### HasGeoJsonFile
+### Boundary
 
 | Method | Description |
 |--------|-------------|
-| `getGeoJsonFileAttributeName()` | Returns the model attribute storing GeoJSON (default: 'geojson') |
-| `getGeoJsonFileDisk()` | Returns the storage disk for the file (default: null = local) |
-| `getExpirationTime()` | Returns DateTime for temporary URL expiration (default: null = permanent) |
-| `getGeoJsonUrl()` | Returns the accessible URL for the GeoJSON file |
+| `fromUrl($url)` | Load GeoJSON from a public URL |
+| `fromStorage($path, $disk)` | Load GeoJSON from Laravel storage |
+| `fromGeoJson($data)` | Render an inline GeoJSON object |
+| `features($key, $label)` | Select feature properties used for joins and labels |
+| `values($values)` | Join thematic values to features |
+| `colorScale($colors, $missingColor)` | Configure choropleth colors |
+| `choropleth($values, $colors, $missingColor)` | Configure values and colors together |
+
+Administrative layers use `AdministrativeBoundary`.
+
+| Method | Description |
+|--------|-------------|
+| `restrictTo($regions)` | Restrict the territory using one shapeID, a list of shapeIDs, or a closure; pass null to clear |
+| `values($values)` | Accept shapeID totals, a list of shapeID-to-value maps, or a closure |
+| `level($level)` | Select a fixed `AdministrativeLevel` enum or `Auto`, optionally through a closure |
+
+Generated classes in `Countries` are static ID helpers. `country()`, `state($code)` and `city($state, $name)` return strings. `states($values)` and `cities($state, $values)` return arrays keyed by shapeID. All layer methods belong to `AdministrativeBoundary`.
 
 ### Map Configuration Properties
 

@@ -10,6 +10,8 @@ use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\BaseLayerGroup;
 use EduardoRibeiroDev\FilamentLeaflet\LayerGroups\LayerGroup;
 use EduardoRibeiroDev\FilamentLeaflet\Layers\Marker;
 use EduardoRibeiroDev\FilamentLeaflet\Layers\Shapes\Shape;
+use EduardoRibeiroDev\FilamentLeaflet\Layers\Boundaries\Boundary;
+use Illuminate\Support\Facades\Lang;
 use Livewire\Attributes\On;
 
 trait HasMapConfig
@@ -53,18 +55,6 @@ trait HasMapConfig
     protected int|Closure $minZoom = 2;
 
     protected TileLayer|string|array|Closure $tileLayersUrl = TileLayer::OpenStreetMap;
-
-    // Configurações do GeoJSON Density
-    protected string|Closure|null $geoJsonUrl = null;
-    protected array|Closure $geoJsonColors = [
-        '#FED976',
-        '#FEB24C',
-        '#FD8D3C',
-        '#FC4E2A',
-        '#E31A1C',
-        '#BD0026',
-        '#800026'
-    ];
 
     // Cache de layers e grupos
     private ?array $cachedLayerData = null;
@@ -381,7 +371,7 @@ trait HasMapConfig
         ];
     }
 
-    // === MARKERS & GEOJSON ===
+    // === Layers ===
 
     /**
      * Retorna a coleção de Markers a serem exibidos.
@@ -402,6 +392,15 @@ trait HasMapConfig
     }
 
     /**
+     * Retorna a coleção de Boundaries a serem exibidos.
+     * @return Boundary[]
+     */
+    protected function getBoundaries(): array
+    {
+        return [];
+    }
+
+    /**
      * Retorna a coleção de todos os Layers a serem exibidos.
      * @return array<BaseLayer|BaseLayerGroup>
      */
@@ -409,7 +408,8 @@ trait HasMapConfig
     {
         return array_merge(
             $this->getMarkers(),
-            $this->getShapes()
+            $this->getShapes(),
+            $this->getBoundaries()
         );
     }
 
@@ -480,45 +480,6 @@ trait HasMapConfig
     private function getCachedLayerGroups(): array
     {
         return $this->getCachedLayerData()['groups'];
-    }
-
-    /**
-     * Retorna dados de densidade para o GeoJSON (ex: colorir estados).
-     */
-    protected function getGeoJsonData(): array
-    {
-        return [];
-    }
-
-    /**
-     * Retorna a paleta de cores para a densidade.
-     */
-    protected function getGeoJsonColors(): array
-    {
-        return $this->geoJsonColors;
-    }
-
-    /**
-     * Retorna a URL do arquivo GeoJSON.
-     */
-    protected function getGeoJsonUrl(): ?string
-    {
-        if ($this->geoJsonUrl) {
-            return $this->geoJsonUrl;
-        }
-
-        return asset('vendor/filament-leaflet/maps/brazil.json');
-    }
-
-    /**
-     * Retorna o template HTML para o tooltip do GeoJSON.
-     */
-    protected function getGeoJsonTooltip(): string
-    {
-        return <<< HTML
-            <h4>{state}</h4>
-            <b>Density: {density}</b>
-        HTML;
     }
 
     // === EVENTS & HANDLERS ===
@@ -627,6 +588,8 @@ trait HasMapConfig
      */
     public final function getMapData(): array
     {
+        $regionNames = Lang::get('filament-leaflet::regions', [], null, false);
+
         return [
             'mapId'           => $this->getId(),
             'mapHeight'       => $this->getMapHeight(),
@@ -634,17 +597,14 @@ trait HasMapConfig
             'autoCenter'      => $this->getAutoCenter(),
             'fitBounds'       => $this->getFitBounds(),
             'defaultZoom'     => $this->getDefaultZoom(),
-            'geoJsonColors'   => $this->getGeoJsonColors(),
-            'geoJsonData'     => $this->getGeoJsonData(),
-            'infoText'        => $this->getGeoJsonTooltip(),
             'tileLayersUrl'   => $this->preparedTileLayersUrl(),
             'layerGroupsData' => $this->preparedLayerGroups(),
             'layersData'      => $this->preparedLayers(),
+            'regionNames'     => is_array($regionNames) ? $regionNames : [],
             'zoomConfig'      => $this->getZoomOptions(),
             'mapConfig'       => $this->getMapOptions(),
             'mapControls'     => $this->getMapControls(),
             'geoSearchConfig' => $this->getGeoSearchConfig(),
-            'geoJsonUrl'      => $this->getGeoJsonUrl(),
             'customStyles'    => $this->getCustomStyles(),
             'customScripts'   => $this->getCustomScripts(),
         ];

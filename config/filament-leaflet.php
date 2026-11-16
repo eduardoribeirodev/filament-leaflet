@@ -10,6 +10,7 @@ return [
         'description' => 'description',
         'bounds' => 'bounds',
         'points' => 'points',
+        'geojson' => 'geojson'
     ],
 
     'sync_record_attributes' => true,

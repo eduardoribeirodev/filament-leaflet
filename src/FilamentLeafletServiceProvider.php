@@ -2,6 +2,7 @@
 
 namespace EduardoRibeiroDev\FilamentLeaflet;
 
+use EduardoRibeiroDev\FilamentLeaflet\Console\Commands\InstallGeoJsonCommand;
 use EduardoRibeiroDev\FilamentLeaflet\Console\Commands\MakeWidgetCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -19,7 +20,10 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
             ->name('filament-leaflet')
             ->hasConfigFile('filament-leaflet')
             ->hasTranslations()
-            ->hasCommands([MakeWidgetCommand::class])
+            ->hasCommands([
+                InstallGeoJsonCommand::class,
+                MakeWidgetCommand::class
+            ])
             ->hasViews();
     }
 
@@ -48,10 +52,6 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
             $this->getAssets(),
             $this->getAssetPackageName()
         );
-
-        $this->publishes([
-            __DIR__ . '/../resources/json/maps' => public_path('vendor/filament-leaflet/maps')
-        ], 'filament-leaflet');
     }
 
     protected function getAssetPackageName(): ?string
@@ -65,8 +65,8 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
     protected function getAssets(): array
     {
         return [
-            Css::make('leaflet', __DIR__ . '/../resources/dist/leaflet-map.css'),
-            Js::make('leaflet-map', __DIR__ . '/../resources/dist/leaflet-map.umd.cjs'),
+            Css::make('leaflet', __DIR__ . '/../dist/leaflet-map.css'),
+            Js::make('leaflet-map', __DIR__ . '/../dist/leaflet-map.umd.cjs'),
         ];
     }
 }

@@ -8,7 +8,6 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Livewire\Wireable;
-use Override;
 
 readonly class Coordinate implements Arrayable, Castable, Wireable
 {
@@ -16,8 +15,8 @@ readonly class Coordinate implements Arrayable, Castable, Wireable
     public const LONGITUDE_KEY = 'lng';
 
     public function __construct(
-        public float $lat,
-        public float $lng,
+        public ?float $lat,
+        public ?float $lng,
     ) {}
 
     public function toArray()
@@ -38,8 +37,6 @@ readonly class Coordinate implements Arrayable, Castable, Wireable
         $lat = $array[static::LATITUDE_KEY] ?? $array[0] ?? null;
         $lng = $array[static::LONGITUDE_KEY] ?? $array[1] ?? null;
 
-        if ($lat === null || $lng === null) return null;
-
         return new static($lat, $lng);
     }
 
@@ -47,8 +44,6 @@ readonly class Coordinate implements Arrayable, Castable, Wireable
     {
         $lat = $object->{static::LATITUDE_KEY} ?? null;
         $lng = $object->{static::LONGITUDE_KEY} ?? null;
-
-        if ($lat === null || $lng === null) return null;
 
         return new static($lat, $lng);
     }
@@ -59,7 +54,7 @@ readonly class Coordinate implements Arrayable, Castable, Wireable
             $coordinates instanceof static => $coordinates,
             is_array($coordinates) => static::fromArray($coordinates),
             is_object($coordinates) => static::fromObject($coordinates),
-            default => null
+            default => new static(null, null),
         };
     }
 
@@ -154,5 +149,10 @@ readonly class Coordinate implements Arrayable, Castable, Wireable
     public function toLivewire()
     {
         return $this->toArray();
+    }
+
+    public function isValid(): bool
+    {
+        return $this->lat !== null && $this->lng !== null;
     }
 }

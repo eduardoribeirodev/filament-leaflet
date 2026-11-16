@@ -15,3 +15,5 @@
 /phpstan.neon.dist      export-ignore
 /phpstan-baseline.neon  export-ignore
 /vite.config.ts         export-ignore
+/resources/js           export-ignore
+/resources/css          export-ignore
