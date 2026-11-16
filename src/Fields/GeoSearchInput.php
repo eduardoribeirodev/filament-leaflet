@@ -245,6 +245,13 @@ class GeoSearchInput extends Field
             ->all();
     }
 
+    #[ExposedLivewireMethod]
+    #[Renderless]
+    public function getSearchResultsForJs(string $search): array
+    {
+        return $this->getSearchResults($search);
+    }
+
     public function getResultsLimit(): int
     {
         return (int) $this->evaluate($this->resultsLimit);

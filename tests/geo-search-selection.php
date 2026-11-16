@@ -54,6 +54,9 @@ $field->minSearchLength(fn () => 5)->useShortLabels(fn () => false);
 check($field->getSearchResults('Stap') === [] && $service->calls === 0, 'Short searches must not call the provider.');
 
 $options = $field->getSearchResults('Stapleford');
+check($field->getSearchResultsForJs('Stapleford') === $options, 'The newer Filament Select must receive the same search results.');
+$searchMethod = new ReflectionMethod($field, 'getSearchResultsForJs');
+check($searchMethod->getAttributes(\Filament\Support\Components\Attributes\ExposedLivewireMethod::class) !== [], 'Livewire must be allowed to dispatch the new search method.');
 check(count(array_unique(array_column($options, 'value'))) === 3, 'Results must have distinct scalar values.');
 $cast = $field->getDefaultStateCasts()[0];
 foreach ($options as $index => $option) {
