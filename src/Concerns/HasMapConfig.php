@@ -33,6 +33,7 @@ trait HasMapConfig
     // Configurações de GeoSearch
     protected bool|Closure $hasGeoSearchControl = false;
     protected GeoSearchProvider|string|Closure $geoSearchProvider = GeoSearchProvider::Nominatim;
+    protected string|Closure|null $geoSearchEndpoint = null;
     protected string|Closure|null $geoSearchApiKey = null;
 
     // Controles do Geoman
@@ -159,6 +160,14 @@ trait HasMapConfig
         return $geoSearchProvider instanceof GeoSearchProvider
             ? $geoSearchProvider
             : GeoSearchProvider::from($geoSearchProvider);
+    }
+
+    /**
+     * Retorna a URL personalizada de busca do Nominatim.
+     */
+    protected function getGeoSearchEndpoint(): ?string
+    {
+        return $this->evaluate($this->geoSearchEndpoint);
     }
 
     /**
@@ -357,6 +366,7 @@ trait HasMapConfig
         return [
             'provider' => $this->getGeoSearchProvider()->value,
             'apiKey'   => $this->getGeoSearchApiKey(),
+            'endpoint' => $this->getGeoSearchEndpoint(),
         ];
     }
 

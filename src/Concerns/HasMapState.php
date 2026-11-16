@@ -210,13 +210,25 @@ trait HasMapState
     }
 
     /**
-     * Set the geocoding provider to use for search queries. The $provider parameter can be an instance of the GeoSearchProvider enum, a string representing the provider, or a Closure that returns either of those. This method allows you to specify which geocoding service should be used for processing search queries in the search control on the map. By providing a valid provider, you enable the search functionality to return location results based on user input.
-     * @param GeoSearchProvider|string|Closure $provider The geocoding provider to use for search queries. This can be an instance of the GeoSearchProvider enum, a string representing the provider, or a Closure that returns either of those.
-     * @return $this The current instance of the class using this trait, allowing for method chaining.
+     * Set the geocoding provider and optionally a custom Nominatim search URL.
      */
-    public function geoSearchProvider(GeoSearchProvider|string|Closure $provider): static
+    public function geoSearchProvider(GeoSearchProvider|string|Closure $provider, string|Closure|null $endpoint = null): static
     {
         $this->geoSearchProvider = $provider;
+
+        if ($endpoint !== null) {
+            $this->geoSearchEndpoint($endpoint);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set the Nominatim search URL or pass null to use the default.
+     */
+    public function geoSearchEndpoint(string|Closure|null $endpoint): static
+    {
+        $this->geoSearchEndpoint = $endpoint;
 
         return $this;
     }
