@@ -43,6 +43,11 @@ document.addEventListener('livewire:init', () => {
 
                 this.$wire.watch(this.config.state.statePath, () => {
                     this.updatePickMarker();
+
+                    if (this.config.state.followMarker && this.pickMarker) {
+                        const marker = Alpine.raw(this.pickMarker);
+                        Alpine.raw(this.mapCore.map).panTo(marker.getLatLng());
+                    }
                 });
             },
 
@@ -52,6 +57,7 @@ document.addEventListener('livewire:init', () => {
             updatePickMarker() {
                 if (this.pickMarker) {
                     Alpine.raw(this.pickMarker).removeFrom(Alpine.raw(this.mapCore.map));
+                    this.pickMarker = null;
                 }
 
                 const coords = this.getState();

@@ -1508,6 +1508,7 @@ public function getCustomScripts(): string
 | Method | Description |
 |--------|-------------|
 | `make($name)` | Create a new MapPicker field |
+| `followMarker()` | Pan to the marker when the field coordinates change, keeping the current zoom. Disabled by default. |
 | `autoCenter(bool)` | Auto-center map to user's current location |
 | `center($lat, $lng)` | Set map center coordinates |
 | `zoom($level)` | Set initial zoom level |
