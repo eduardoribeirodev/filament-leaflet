@@ -1476,7 +1476,7 @@ public function getCustomScripts(): string
 | `limit($count)` | Set maximum results (1–50, default 25) |
 | `withAddressDetails($enabled)` | Include structured address in results (default true) |
 | `language($code)` | Set preferred language (e.g., 'pt-BR', 'en') |
-| `countryCodes($codes)` | Restrict to country codes (e.g., 'br', ['br', 'ar']) |
+| `countryCodes($codes)` | Restrict results to ISO 3166-1 alpha-2 country codes (e.g., `'br'` or `['br', 'ar']`). Use `language('en')` to set the result language. |
 | `viewbox($minLon, $minLat, $maxLon, $maxLat)` | Set bounding box to bias/restrict results |
 | `bounded($enabled)` | Strictly restrict results to viewbox (default false) |
 | `cacheResults($ttl)` | Cache results for given seconds (default 3600) |
