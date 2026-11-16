@@ -822,7 +822,7 @@ export class LeafletMapCore {
 
         switch (provider) {
             case 'nominatim':
-                return new OpenStreetMapProvider();
+                return new OpenStreetMapProvider({ searchUrl: config?.endpoint });
 
             case 'google':
                 if (!apiKey) {

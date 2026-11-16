@@ -283,6 +283,23 @@ MapPicker::make('location')
     ->recenterTimeout(fn($record) => $record->is_read_only ? 3000 : null)
 ```
 
+**Use a self-hosted Nominatim instance for map search:**
+
+```php
+use EduardoRibeiroDev\FilamentLeaflet\Enums\GeoSearchProvider;
+use EduardoRibeiroDev\FilamentLeaflet\Fields\MapPicker;
+
+MapPicker::make('location')
+    ->geoSearchControl()
+    ->geoSearchProvider(GeoSearchProvider::Nominatim)
+    ->geoSearchEndpoint('https://nominatim.internal.example/search');
+```
+
+You can also pass the URL as the `endpoint:` argument to
+`geoSearchProvider()`. The map uses the public Nominatim search URL by
+default. The custom URL must be reachable from the browser and allow CORS
+requests from your app if it is on a different origin.
+
 ### GeoSearchInput (Form Field)
 
 Search and select locations using multiple geocoding providers:
