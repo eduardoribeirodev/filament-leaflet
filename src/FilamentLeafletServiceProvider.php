@@ -66,7 +66,9 @@ class FilamentLeafletServiceProvider extends PackageServiceProvider
     {
         return [
             Css::make('leaflet', __DIR__ . '/../dist/leaflet-map.css'),
-            Js::make('leaflet-map', __DIR__ . '/../dist/leaflet-map.umd.cjs'),
+            // Loaded by the map component (see `map.blade.php`), only on the pages that show a map: the bundled
+            // Leaflet replaces `window.L`, which would break other Leaflet-based plugins on every other page.
+            Js::make('leaflet-map', __DIR__ . '/../dist/leaflet-map.umd.cjs')->loadedOnRequest(),
         ];
     }
 }
