@@ -7,6 +7,7 @@
 ])
 
 @php
+    use Filament\Support\Facades\FilamentAsset;
     use Illuminate\Support\Js;
     $mapClass = match(true) {
         isset($field) => 'leafletMapField',
@@ -15,6 +16,11 @@
         isset($column) => 'leafletMapColumn',
     };
 @endphp
+
+{{-- Added once per page, before the map is initialised (see `FilamentLeafletServiceProvider::getAssets()`) --}}
+@assets
+    <script src="{{ FilamentAsset::getScriptSrc('leaflet-map', 'eduardoribeirodev/filament-leaflet') }}"></script>
+@endassets
 
 <div
     wire:ignore
